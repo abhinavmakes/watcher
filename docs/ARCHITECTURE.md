@@ -60,17 +60,20 @@ Both deploy from the same monorepo on Railway. Railway supports multiple service
    Connectors pull from each source in parallel (asyncio.gather)
    Core sources for MVP quality:
    ├── HN: /v2/topstories, fetch top 30
-   ├── RSS: feedparser over 10-15 curated feeds
-   └── Dev.to: REST API, top tagged articles with full markdown body
+   └── RSS: feedparser over 10-15 curated feeds
 
    Secondary connectors, added after core clustering works:
    ├── GitHub: /trending endpoint (scrape, no official API)
    └── Product Hunt: GraphQL API, today's posts
 
+   Excluded from MVP:
+   └── Dev.to: high volume, but weak signal-to-noise for this product's
+       intelligence briefings and clustering demo
+
 2. NORMALIZE
    Each connector outputs a unified ArticleInput schema:
    {
-     source: "hn" | "rss" | "github" | "producthunt" | "devto",
+     source: "hn" | "rss" | "github" | "producthunt",
      title: str,
      url: str,               # original source URL for display/clickthrough
      canonical_url: str,     # normalized URL used for deduplication
@@ -170,7 +173,7 @@ front-loads the highest demo risk: bad cluster merges.
 
 ### Seed data
 
-The repo includes small real-data fixtures from HN, RSS, and Dev.to for local
+The repo includes small real-data fixtures from HN and curated RSS for local
 development and demo readiness. Seed data must use the same normalized article
 schema as live connectors, including `url` and `canonical_url`, so it exercises
 the real pipeline path instead of becoming a separate fake-data mode.
@@ -232,7 +235,7 @@ complexity.
 ```sql
 CREATE TABLE articles (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  source        TEXT NOT NULL,          -- 'hn', 'rss', 'github', 'producthunt', 'devto'
+  source        TEXT NOT NULL,          -- 'hn', 'rss', 'github', 'producthunt'
   title         TEXT NOT NULL,
   url           TEXT NOT NULL,          -- original URL for display/clickthrough
   canonical_url TEXT NOT NULL,          -- normalized URL for deduplication

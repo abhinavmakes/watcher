@@ -144,15 +144,16 @@ Plus "Custom model" text input for each provider.
 |--------|-----|-----------------|-----------|------|
 | Hacker News | Firebase API | Real-time | Community submissions | Yes |
 | RSS feeds | feedparser | Per feed (1-6h) | Blog posts, newsletters | Yes |
-| Dev.to | REST | Every 30 min | Developer articles with markdown body | Yes |
 | GitHub trending | Scrape | Daily | Repositories | Yes (no official API) |
 | Product Hunt | GraphQL | Daily | Product launches | Yes |
 
-Build order is intentionally staged. HN, RSS, and Dev.to are the core MVP
-sources because they provide the strongest article text for embedding and
-RAG. GitHub Trending and Product Hunt are added after the core pipeline and
-clustering evaluation work; both are best-effort connectors whose failure
-must not block the pipeline.
+Build order is intentionally staged. HN and curated RSS are the core MVP
+sources because they provide the strongest signal-to-noise for embedding,
+clustering, and RAG. GitHub Trending and Product Hunt are added after the core
+pipeline and clustering evaluation work; both are best-effort connectors whose
+failure must not block the pipeline. Dev.to is intentionally excluded from the
+MVP because its article quality and topical density do not justify the ingestion
+surface area for a portfolio demo.
 
 **Curated RSS feeds (initial set):**
 The Pragmatic Engineer, Simon Willison's Weblog, Lenny's Newsletter, TechCrunch AI, The Information, a16z blog, OpenAI blog, Anthropic research, Google AI blog, Hugging Face blog, LangChain blog, FastAPI blog, Python Weekly, AI News (by Jack Clark)

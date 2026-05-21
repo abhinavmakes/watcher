@@ -2,7 +2,7 @@
 
 Real-time tech intelligence that shows you what's gaining momentum before it hits your newsletter.
 
-Watcher ingests from Hacker News, RSS feeds, Dev.to, GitHub trending, and Product Hunt every 30 minutes. HN, RSS, and Dev.to are the core text-rich sources; GitHub and Product Hunt are best-effort secondary connectors. Watcher clusters related articles using AI agents, scores momentum, and surfaces what matters — not as a firehose, but as a curated intelligence briefing you can explore and query.
+Watcher ingests from Hacker News and curated RSS feeds every 30 minutes. HN and RSS are the core MVP sources; GitHub Trending and Product Hunt are best-effort secondary connectors added only after the core clustering path works. Watcher clusters related articles using AI agents, scores momentum, and surfaces what matters — not as a firehose, but as a curated intelligence briefing you can explore and query.
 
 ## Why this exists
 
@@ -12,7 +12,7 @@ The product's opinion: you don't need to read 50 articles. You need to see 8 clu
 
 ## How it works
 
-**Ingestion** — A background worker runs every 30 minutes, pulling first from 3 core sources (HN API, curated RSS feeds, Dev.to), then from best-effort GitHub Trending and Product Hunt connectors. Each article is normalized, classified by domain, and embedded into a vector store.
+**Ingestion** — A background worker runs every 30 minutes, pulling first from HN API and curated RSS feeds, then from best-effort GitHub Trending and Product Hunt connectors if they clear the quality bar. Each article is normalized, classified by domain, and embedded into a vector store.
 
 **Clustering** — Articles that talk about the same topic across different sources land in the same cluster via semantic similarity over embeddings. "PydanticAI v2.3 breaking changes" from HN, a GitHub release note, and a blog post all group together automatically.
 
@@ -27,7 +27,7 @@ The product's opinion: you don't need to read 50 articles. You need to see 8 clu
 ```
 ┌─────────────────────────────────────────────────────┐
 │  Data Sources (all free)                            │
-│  HN API · RSS · Dev.to · GitHub Trending · PH      │
+│  HN API · curated RSS · GitHub Trending · PH       │
 └─────────────┬───────────────────────────────────────┘
               │
 ┌─────────────▼───────────────────────────────────────┐
@@ -78,11 +78,11 @@ The product's opinion: you don't need to read 50 articles. You need to see 8 clu
 
 **BYOK with direct provider keys** — Users bring their own OpenAI, Anthropic, or Google API key for the chat feature. No middleman (OpenRouter) forced on users who already pay for a provider. LiteLLM normalizes the provider differences on the backend.
 
-**Risk-first build order** — The first milestone uses only HN, RSS, and Dev.to because they produce the strongest text for embeddings and RAG. GitHub Trending and Product Hunt are added only after clustering has been evaluated on real article pairs.
+**Risk-first build order** — The first milestone uses only HN and curated RSS because they have the best signal-to-noise for embeddings, clustering, and RAG. Lower-quality firehose sources such as Dev.to are intentionally excluded from the MVP; GitHub Trending and Product Hunt are added only after clustering has been evaluated on real article pairs.
 
 **Hosted Supabase from day 1** — The project is built against the real managed Supabase surface early so Auth, RLS, pgvector, and migrations are exercised before deployment week. Tests isolate database access where possible.
 
-**Seed data for demo readiness** — A small committed fixture set from HN, RSS, and Dev.to keeps local demos from opening empty while live connector output is sparse.
+**Seed data for demo readiness** — A small committed fixture set from HN and curated RSS keeps local demos from opening empty while live connector output is sparse.
 
 ## Running locally
 
@@ -120,7 +120,6 @@ watcher/
 │   │   │   ├── clusterer.py
 │   │   │   └── synthesizer.py
 │   │   ├── connectors/       # Source-specific fetchers
-│   │   │   ├── devto.py
 │   │   │   ├── hackernews.py
 │   │   │   ├── rss.py
 │   │   │   ├── github_trending.py

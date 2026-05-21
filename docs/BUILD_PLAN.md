@@ -2,11 +2,11 @@
 
 Three-week build. ~40 hours total. Each week has a clear deliverable that works standalone, so if life interrupts, you still have something shippable.
 
-Build order is risk-first: pipeline with HN + RSS + Dev.to → clustering eval → synthesis with gating → API endpoints → frontend → add GitHub/Product Hunt → polish. This front-loads data quality before UI work.
+Build order is risk-first: pipeline with HN + curated RSS → clustering eval → synthesis with gating → API endpoints → frontend → add GitHub/Product Hunt if they clear the quality bar → polish. This front-loads data quality before UI work.
 
 ## Week 1: Data pipeline + backend core
 
-**Goal:** By end of week 1, the ingestion pipeline runs end to end with HN + RSS + Dev.to, articles are classified and embedded, clustering has been manually evaluated, synthesis is gated, and a FastAPI endpoint returns real cluster data.
+**Goal:** By end of week 1, the ingestion pipeline runs end to end with HN + curated RSS, articles are classified and embedded, clustering has been manually evaluated, synthesis is gated, and a FastAPI endpoint returns real cluster data.
 
 ### Day 1-2: Foundation (8h)
 
@@ -45,14 +45,15 @@ Build order is risk-first: pipeline with HN + RSS + Dev.to → clustering eval �
 - Normalize to ArticleInput schema
 - Canonical URL-based deduplication against existing articles
 
-**Dev.to connector**
-- Implement Dev.to connector (REST API, no auth needed for reads)
-- Fetch top tagged articles with full `body_markdown`
-- Normalize to ArticleInput schema
-- Handle: markdown body text, tag filtering, reactions/comments metadata
+**Fetch-stage pipeline orchestration**
+- Add worker-level connector registration with `ConnectorSpec`
+- Run HN and RSS connector fetches concurrently with `asyncio.gather`
+- Convert connector failures into per-source `source_stats` instead of failing the whole run
+- Keep RSS feed URLs in configuration (`RSS_FEED_URLS`), not hardcoded Python
+- Test: both sources succeed, one source fails, no sources registered
 
 **Seed data**
-- Add a small seed-data path using real normalized articles from HN + RSS + Dev.to
+- Add a small seed-data path using real normalized articles from HN + curated RSS
 - Commit small real-data fixtures for demo readiness, e.g. `backend/fixtures/seed_articles.json`
 - Use it only to keep the dashboard/API demoable while live connector output is sparse or flaky
 
@@ -89,7 +90,7 @@ Build order is risk-first: pipeline with HN + RSS + Dev.to → clustering eval �
 **Pipeline orchestration**
 - worker/pipeline.py: orchestrate full flow
   fetch → dedup → classify → embed → cluster → synthesize → score
-- Week 1 pipeline uses HN + RSS + Dev.to only
+- Week 1 pipeline uses HN + curated RSS only
 - Insert pipeline_runs record
 - Include per-connector source_stats (returned, duplicates, classified, noise, errors)
 - Handle individual connector failures gracefully (log and continue)
@@ -100,7 +101,7 @@ Build order is risk-first: pipeline with HN + RSS + Dev.to → clustering eval �
 - GET /health
 - Test: run pipeline once, hit API, verify real data returns
 
-**End of week 1 checkpoint:** The pipeline ingests from HN + RSS + Dev.to, classifies, embeds, clusters, passes a manual clustering eval, applies synthesis gating, and scores momentum. The API returns real cluster data. You can curl the endpoint and see actual intelligence briefings or single-source signals.
+**End of week 1 checkpoint:** The pipeline ingests from HN + curated RSS, classifies, embeds, clusters, passes a manual clustering eval, applies synthesis gating, and scores momentum. The API returns real cluster data. You can curl the endpoint and see actual intelligence briefings or single-source signals.
 
 ---
 
