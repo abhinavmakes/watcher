@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     encryption_key: SecretStr | None = Field(default=None, repr=False)
 
     pipeline_interval_minutes: int = Field(default=30, ge=1)
+    hn_fetch_limit: int = Field(default=30, ge=1)
+    rss_fetch_limit: int = Field(default=50, ge=1)
+    rss_feed_urls: str = ""
     cluster_existing_similarity_threshold: float = Field(default=0.85, ge=0.0, le=1.0)
     cluster_new_similarity_threshold: float = Field(default=0.83, ge=0.0, le=1.0)
     momentum_stale_hours: int = Field(default=48, ge=1)
@@ -77,6 +80,10 @@ class Settings(BaseSettings):
             for domain in self.high_signal_source_domains.split(",")
             if domain.strip()
         ]
+
+    @property
+    def rss_feed_url_list(self) -> list[str]:
+        return [url.strip() for url in self.rss_feed_urls.split(",") if url.strip()]
 
     @property
     def supabase_secret_value(self) -> str | None:

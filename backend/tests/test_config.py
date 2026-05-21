@@ -25,6 +25,9 @@ def test_settings_loads_typed_values_from_environment(
             "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_test",
             "GOOGLE_API_KEY": "google-test-key",
             "ENCRYPTION_KEY": "encryption-test-key",
+            "HN_FETCH_LIMIT": "25",
+            "RSS_FETCH_LIMIT": "40",
+            "RSS_FEED_URLS": "https://example.com/feed.xml, https://example.com/blog.atom",
             "HIGH_SIGNAL_SOURCE_DOMAINS": "openai.com, anthropic.com",
         }
     )
@@ -38,6 +41,12 @@ def test_settings_loads_typed_values_from_environment(
     assert settings.supabase_publishable_key == "sb_publishable_test"
     assert settings.google_api_key_value == "google-test-key"
     assert settings.encryption_key_value == "encryption-test-key"
+    assert settings.hn_fetch_limit == 25
+    assert settings.rss_fetch_limit == 40
+    assert settings.rss_feed_url_list == [
+        "https://example.com/feed.xml",
+        "https://example.com/blog.atom",
+    ]
     assert settings.high_signal_source_domain_list == ["openai.com", "anthropic.com"]
 
 
