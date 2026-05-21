@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, HttpUrl
 
-ArticleSource = Literal["hn", "rss", "github", "producthunt", "devto"]
+ArticleSource = Literal["hn", "rss", "github", "producthunt"]
 
 
 class ArticleInput(BaseModel):

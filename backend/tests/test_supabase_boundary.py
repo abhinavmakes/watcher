@@ -16,9 +16,11 @@ async def test_create_supabase_gateway_uses_secret_key(
     fake_supabase_factory: FakeSupabaseFactoryFixture,
 ) -> None:
     gateway = await create_supabase_gateway(
-        Settings(
-            supabase_url="https://watcher.supabase.co",
-            supabase_secret_key="sb_secret_test",
+        Settings.model_validate(
+            {
+                "supabase_url": "https://watcher.supabase.co",
+                "supabase_secret_key": "sb_secret_test",
+            }
         )
     )
 

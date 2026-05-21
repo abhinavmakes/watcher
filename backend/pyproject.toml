@@ -51,3 +51,7 @@ pythonpath = ["."]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["feedparser"]
+ignore_missing_imports = true

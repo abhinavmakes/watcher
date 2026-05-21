@@ -62,10 +62,12 @@ def test_settings_treats_blank_optional_secrets_as_missing(
 
 
 def test_settings_redacts_secret_values() -> None:
-    settings = Settings(
-        supabase_secret_key="sb_secret_test",
-        google_api_key="google-test-key",
-        encryption_key="encryption-test-key",
+    settings = Settings.model_validate(
+        {
+            "supabase_secret_key": "sb_secret_test",
+            "google_api_key": "google-test-key",
+            "encryption_key": "encryption-test-key",
+        }
     )
 
     settings_repr = repr(settings)

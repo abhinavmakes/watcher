@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE articles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  source TEXT NOT NULL CHECK (source IN ('hn', 'rss', 'github', 'producthunt', 'devto')),
+  source TEXT NOT NULL CHECK (source IN ('hn', 'rss', 'github', 'producthunt')),
   title TEXT NOT NULL,
   url TEXT NOT NULL,
   canonical_url TEXT NOT NULL,
