@@ -1,0 +1,152 @@
+[
+  {
+    "source": "hn",
+    "title": "Project Hail Mary \u2013 Stellar Navigation Chart",
+    "url": "https://valhovey.github.io/gaia-mary/",
+    "canonical_url": "https://valhovey.github.io/gaia-mary",
+    "content": null,
+    "published_at": "2026-05-21T16:23:11Z",
+    "source_metadata": {
+      "hn_id": 48225297,
+      "author": "speleo",
+      "score": 553,
+      "comment_count": 129,
+      "discussion_url": "https://news.ycombinator.com/item?id=48225297"
+    }
+  },
+  {
+    "source": "hn",
+    "title": "The memory shortage is causing a repricing of consumer electronics",
+    "url": "https://davidoks.blog/p/ai-is-killing-the-cheap-smartphone",
+    "canonical_url": "https://davidoks.blog/p/ai-is-killing-the-cheap-smartphone",
+    "content": null,
+    "published_at": "2026-05-21T21:55:56Z",
+    "source_metadata": {
+      "hn_id": 48229319,
+      "author": "d0ks",
+      "score": 80,
+      "comment_count": 27,
+      "discussion_url": "https://news.ycombinator.com/item?id=48229319"
+    }
+  },
+  {
+    "source": "hn",
+    "title": "Using Kagi Search with Low Vision",
+    "url": "https://veroniiiica.com/using-kagi-search-with-low-vision/",
+    "canonical_url": "https://veroniiiica.com/using-kagi-search-with-low-vision",
+    "content": null,
+    "published_at": "2026-05-21T19:32:16Z",
+    "source_metadata": {
+      "hn_id": 48227860,
+      "author": "speckx",
+      "score": 123,
+      "comment_count": 19,
+      "discussion_url": "https://news.ycombinator.com/item?id=48227860"
+    }
+  },
+  {
+    "source": "hn",
+    "title": "Blog ran on Ubuntu 16.04 for 10 years. I migrated it to FreeBSD",
+    "url": "https://crocidb.com/post/this-blog-ran-on-ubuntu-16-04-for-10-years-i-migrated-it-to-freebsd/",
+    "canonical_url": "https://crocidb.com/post/this-blog-ran-on-ubuntu-16-04-for-10-years-i-migrated-it-to-freebsd",
+    "content": null,
+    "published_at": "2026-05-21T18:54:55Z",
+    "source_metadata": {
+      "hn_id": 48227397,
+      "author": "speckx",
+      "score": 162,
+      "comment_count": 90,
+      "discussion_url": "https://news.ycombinator.com/item?id=48227397"
+    }
+  },
+  {
+    "source": "hn",
+    "title": "The IBM-ification of Google?",
+    "url": "https://zeroshot.bearblog.dev/google-is-shattering-under-its-own-weight-the-ibm-ification-of-google/",
+    "canonical_url": "https://zeroshot.bearblog.dev/google-is-shattering-under-its-own-weight-the-ibm-ification-of-google",
+    "content": null,
+    "published_at": "2026-05-21T23:30:10Z",
+    "source_metadata": {
+      "hn_id": 48230049,
+      "author": "sabatonfan",
+      "score": 47,
+      "comment_count": 41,
+      "discussion_url": "https://news.ycombinator.com/item?id=48230049"
+    }
+  },
+  {
+    "source": "hn",
+    "title": "We're testing new ad formats in Search and expanding our Direct Offers pilot",
+    "url": "https://blog.google/products/ads-commerce/google-marketing-live-search-ads/",
+    "canonical_url": "https://blog.google/products/ads-commerce/google-marketing-live-search-ads",
+    "content": null,
+    "published_at": "2026-05-21T09:49:46Z",
+    "source_metadata": {
+      "hn_id": 48220105,
+      "author": "sofumel",
+      "score": 563,
+      "comment_count": 511,
+      "discussion_url": "https://news.ycombinator.com/item?id=48220105"
+    }
+  },
+  {
+    "source": "hn",
+    "title": "Was my $48K GPU server worth it?",
+    "url": "https://rosmine.ai/2026/05/13/was-my-48k-gpu-worth-it/",
+    "canonical_url": "https://rosmine.ai/2026/05/13/was-my-48k-gpu-worth-it",
+    "content": null,
+    "published_at": "2026-05-18T19:33:03Z",
+    "source_metadata": {
+      "hn_id": 48184402,
+      "author": "apwheele",
+      "score": 274,
+      "comment_count": 204,
+      "discussion_url": "https://news.ycombinator.com/item?id=48184402"
+    }
+  },
+  {
+    "source": "hn",
+    "title": "Show HN: Freenet, a peer-to-peer platform for decentralized apps",
+    "url": "https://freenet.org/",
+    "canonical_url": "https://freenet.org",
+    "content": "For the past 5 years or so I&#x27;ve been working on a ground-up redesign of Freenet, my peer-to-peer project from the early 2000s (now renamed Hyphanet).<p>The new Freenet has been up and running since December along with some early applications like River[1], our decentralized group chat and Delta - a decentralized CMS. Users have already started to build their own apps on Freenet including games, and we have some interesting apps in development like Atlas, a search&#x2F;recommendation engine.<p>Architecturally, this new Freenet is a global, decentralized key-value store where keys are webassembly contracts which define what values (aka &quot;state&quot;) are valid for that key, how or when the values can be mutated, and how the state can be efficiently synchronized between peers.<p>We&#x27;ve developed a unique (AFAIK) solution to the consistency problem, every contract must define a &quot;merge&quot; operation for the contract&#x27;s associated state. This operation must be commutative, meaning that you can merge multiple states in any order and you&#x27;ll get the same end result.<p>This approach allows state updates to spread through the network like a virus[2], which typically achieves consistent global state in a few seconds or less.<p>Like the world wide web, Freenet applications can be downloaded from the network itself and run in a web browser - similar to single-page apps on the normal web. However, rather than connecting back to an API running in a datacenter, the webapp connects locally to the Freenet peer and interacts with Freenet contracts and delegates over a local websocket connection.<p>If you&#x27;d like to try Freenet we have convenient installers for the major desktop OSs but not yet mobile, and you can be chatting with other users on River within seconds[3]. Happy to answer any questions, you&#x27;re also welcome to read our FAQ[4], or watch a talk I gave back in March[5].<p>[1] <a href=\"https:&#x2F;&#x2F;github.com&#x2F;freenet&#x2F;river\" rel=\"nofollow\">https:&#x2F;&#x2F;github.com&#x2F;freenet&#x2F;river</a><p>[2] <a href=\"https:&#x2F;&#x2F;freenet.org&#x2F;about&#x2F;news&#x2F;summary-delta-sync&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;freenet.org&#x2F;about&#x2F;news&#x2F;summary-delta-sync&#x2F;</a><p>[3] <a href=\"https:&#x2F;&#x2F;freenet.org&#x2F;quickstart&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;freenet.org&#x2F;quickstart&#x2F;</a><p>[4] <a href=\"https:&#x2F;&#x2F;freenet.org&#x2F;faq&#x2F;\" rel=\"nofollow\">https:&#x2F;&#x2F;freenet.org&#x2F;faq&#x2F;</a><p>[5] <a href=\"https:&#x2F;&#x2F;youtu.be&#x2F;3SxNBz1VTE0\" rel=\"nofollow\">https:&#x2F;&#x2F;youtu.be&#x2F;3SxNBz1VTE0</a>",
+    "published_at": "2026-05-21T14:34:57Z",
+    "source_metadata": {
+      "hn_id": 48223362,
+      "author": "sanity",
+      "score": 188,
+      "comment_count": 98,
+      "discussion_url": "https://news.ycombinator.com/item?id=48223362"
+    }
+  },
+  {
+    "source": "hn",
+    "title": "Indexing a year of video locally on a 2021 MacBook with Gemma4-31B (50GB swap)",
+    "url": "https://blog.simbastack.com/indexed-a-year-of-video-locally/",
+    "canonical_url": "https://blog.simbastack.com/indexed-a-year-of-video-locally",
+    "content": null,
+    "published_at": "2026-05-21T14:01:37Z",
+    "source_metadata": {
+      "hn_id": 48222733,
+      "author": "asenna",
+      "score": 284,
+      "comment_count": 91,
+      "discussion_url": "https://news.ycombinator.com/item?id=48222733"
+    }
+  },
+  {
+    "source": "hn",
+    "title": "Mycorrhizal Fungi, Nature's Key to Plant Survival and Success",
+    "url": "https://pacifichorticulture.org/articles/mycorrhizal-fungi-natures-key-to-plant-survival-and-success/",
+    "canonical_url": "https://pacifichorticulture.org/articles/mycorrhizal-fungi-natures-key-to-plant-survival-and-success",
+    "content": null,
+    "published_at": "2026-05-20T16:01:26Z",
+    "source_metadata": {
+      "hn_id": 48209905,
+      "author": "mooreds",
+      "score": 28,
+      "comment_count": 3,
+      "discussion_url": "https://news.ycombinator.com/item?id=48209905"
+    }
+  }
+]

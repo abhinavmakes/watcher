@@ -25,8 +25,14 @@ class FetchResult:
 
 
 @dataclass(frozen=True)
+class DedupResult:
+    articles: list[ArticleInput]
+    duplicates_by_source: dict[str, int]
+
+
 class SourceFetchStats(BaseModel):
     returned: int
+    duplicates: int = 0
     error: str | None = None
 
 
@@ -50,20 +56,44 @@ async def _fetch_from_connector(spec: ConnectorSpec) -> FetchResult:
     return FetchResult(source=spec.name, articles=articles)
 
 
+def _deduplicate_fetched_articles(articles: Sequence[ArticleInput]) -> DedupResult:
+    seen_canonical_urls: set[str] = set()
+    unique_articles: list[ArticleInput] = []
+    duplicates_by_source: dict[str, int] = {}
+    for article in articles:
+        if article.canonical_url in seen_canonical_urls:
+            duplicates_by_source[article.source] = (
+                duplicates_by_source.get(article.source, 0) + 1
+            )
+            continue
+        seen_canonical_urls.add(article.canonical_url)
+        unique_articles.append(article)
+    return DedupResult(
+        articles=unique_articles,
+        duplicates_by_source=duplicates_by_source,
+    )
+
+
 async def run_pipeline(connector_specs: Sequence[ConnectorSpec]) -> PipelineRunSummary:
     started_at = datetime.now(UTC)
 
     results = await asyncio.gather(*(_fetch_from_connector(spec) for spec in connector_specs))
-    articles_fetched = sum(len(result.articles) for result in results)
+    all_articles = [article for result in results for article in result.articles]
+    dedup_result = _deduplicate_fetched_articles(all_articles)
+
     source_stats = {
-        result.source: SourceFetchStats(returned=len(result.articles), error=result.error)
+        result.source: SourceFetchStats(
+            returned=len(result.articles),
+            duplicates=dedup_result.duplicates_by_source.get(result.source, 0),
+            error=result.error,
+        )
         for result in results
     }
 
     return PipelineRunSummary(
         started_at=started_at,
         completed_at=datetime.now(UTC),
-        articles_fetched=articles_fetched,
+        articles_fetched=len(all_articles),
         source_stats=source_stats,
         status="completed",
     )
