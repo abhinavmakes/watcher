@@ -82,7 +82,7 @@ The product's opinion: you don't need to read 50 articles. You need to see 8 clu
 
 **Hosted Supabase from day 1** — The project is built against the real managed Supabase surface early so Auth, RLS, pgvector, and migrations are exercised before deployment week. Tests isolate database access where possible.
 
-**Seed data for demo readiness** — A small committed fixture set from HN and curated RSS keeps local demos from opening empty while live connector output is sparse.
+**Seed data for demo readiness** — A small committed fixture set from HN and curated RSS keeps local demos from opening empty while live connector output is sparse. Regenerate it from `backend/` with `python -m scripts.generate_seed_articles`.
 
 ## Running locally
 

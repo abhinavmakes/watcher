@@ -55,6 +55,7 @@ Build order is risk-first: pipeline with HN + curated RSS â†’ clustering eval â†
 **Seed data**
 - Add a small seed-data path using real normalized articles from HN + curated RSS
 - Commit small real-data fixtures for demo readiness, e.g. `backend/fixtures/seed_articles.json`
+- Regenerate fixtures with `python -m scripts.generate_seed_articles` from `backend/`
 - Use it only to keep the dashboard/API demoable while live connector output is sparse or flaky
 
 ### Day 5: Clustering eval + synthesis gating + API (8h)
@@ -169,7 +170,7 @@ Build order is risk-first: pipeline with HN + curated RSS â†’ clustering eval â†
 - Normalize to ArticleInput
 - Treat as best-effort; missing token or GraphQL errors must be recorded in `source_stats` and must not fail the pipeline
 
-**End of week 2 checkpoint:** Full backend is functional. Users can sign in, set interests, store BYOK keys, ask RAG questions about clusters with streaming responses, and receive SSE notifications when the pipeline runs. HN + RSS + Dev.to are the reliable core sources; GitHub and Product Hunt are connected if they clear the best-effort bar.
+**End of week 2 checkpoint:** Full backend is functional. Users can sign in, set interests, store BYOK keys, ask RAG questions about clusters with streaming responses, and receive SSE notifications when the pipeline runs. HN + curated RSS are the reliable core sources; GitHub and Product Hunt are connected if they clear the best-effort bar.
 
 ---
 
@@ -263,13 +264,13 @@ Build order is risk-first: pipeline with HN + curated RSS â†’ clustering eval â†
 
 ## Risk mitigation
 
-**GitHub Trending scraper breaks:** Treat GitHub as a best-effort connector. If scraping becomes brittle, fall back to the GitHub Search API for recently active repositories or launch with HN + RSS + Dev.to. Three strong text sources are enough for the MVP demo.
+**GitHub Trending scraper breaks:** Treat GitHub as a best-effort connector. If scraping becomes brittle, fall back to the GitHub Search API for recently active repositories or launch with HN + curated RSS. Two high-signal source classes are enough for the MVP demo if clustering and synthesis are strong.
 
 **Clustering quality is poor:** Start with 0.85 for existing cluster joins and 0.83 for new orphan clusters, then validate with `scripts/eval_clustering.py` before frontend work. Test roughly 50 article pairs and manually label at least 10 positive and 10 negative examples. If clustering is still bad, raise thresholds and tolerate over-splitting; broad domain-only grouping is only a last-resort demo fallback.
 
 **Synthesis overstates weak signals:** Gate synthesis. Only synthesize clusters with 2+ articles or one article from a high-signal source. Label all one-article cards as "single-source signal" and avoid wording that implies broad community traction.
 
-**Dashboard opens empty:** Keep a seed-data path with real normalized articles from HN + RSS + Dev.to. The seed path exists for demo readiness and local development, not as fake production data.
+**Dashboard opens empty:** Keep a seed-data path with real normalized articles from HN + curated RSS. The seed path exists for demo readiness and local development, not as fake production data.
 
 **Google free tier rate limits hit:** 15 RPM is tight if you're processing 500 articles at once. Solution: add a 4-second delay between LLM calls (15 per minute). The pipeline can take 10-15 minutes and that's fine â€” it runs in the background.
 

@@ -176,7 +176,12 @@ front-loads the highest demo risk: bad cluster merges.
 The repo includes small real-data fixtures from HN and curated RSS for local
 development and demo readiness. Seed data must use the same normalized article
 schema as live connectors, including `url` and `canonical_url`, so it exercises
-the real pipeline path instead of becoming a separate fake-data mode.
+the real pipeline path instead of becoming a separate fake-data mode. Regenerate
+the fixture from `backend/` with:
+
+```bash
+python -m scripts.generate_seed_articles
+```
 
 ### Dashboard request flow
 
