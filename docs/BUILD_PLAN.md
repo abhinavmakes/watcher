@@ -4,6 +4,24 @@ Three-week build. ~40 hours total. Each week has a clear deliverable that works 
 
 Build order is risk-first: pipeline with HN + curated RSS → clustering eval → synthesis with gating → API endpoints → frontend → add GitHub/Product Hunt if they clear the quality bar → polish. This front-loads data quality before UI work.
 
+## Current checkpoint
+
+The backend has the first ingestion slice in place:
+- HN and RSS connectors normalize into `ArticleInput`
+- the worker fetch stage runs connector specs concurrently and records per-source stats
+- current-run duplicate articles are removed by `canonical_url`
+- `app/services/article_store.py` maps articles into Supabase `articles` rows
+- article persistence uses upsert on `canonical_url` so repeated ingestion runs are idempotent
+- focused tests cover connector failures, deduplication, empty connector lists, and article-store mapping
+- the live Supabase smoke test has passed: running the worker inserts HN
+  articles into the hosted `articles` table, stores `source_meta` as JSONB, and
+  repeated runs do not create duplicate `canonical_url` rows
+
+The next slice is not clustering yet. First persist each worker execution into
+`pipeline_runs` so the backend has an audit trail and the future SSE endpoint
+has a table to poll for completed runs. Only after article persistence and run
+tracking are stable should embedding/classification work start.
+
 ## Week 1: Data pipeline + backend core
 
 **Goal:** By end of week 1, the ingestion pipeline runs end to end with HN + curated RSS, articles are classified and embedded, clustering has been manually evaluated, synthesis is gated, and a FastAPI endpoint returns real cluster data.
@@ -57,6 +75,15 @@ Build order is risk-first: pipeline with HN + curated RSS → clustering eval �
 - Commit small real-data fixtures for demo readiness, e.g. `backend/fixtures/seed_articles.json`
 - Regenerate fixtures with `python -m scripts.generate_seed_articles` from `backend/`
 - Use it only to keep the dashboard/API demoable while live connector output is sparse or flaky
+- Do not confuse seed fixture generation with database seeding: the current seed script writes JSON only. Supabase should be tested by running the real worker path against the hosted database.
+
+**Supabase persistence smoke test**
+- Ensure migrations from `supabase/migrations/` have been applied to the hosted Supabase project
+- Configure `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in the local `.env`
+- Wire the worker entrypoint to create a `SupabaseGateway` and pass it into `run_pipeline`
+- Run one pipeline pass with a small HN limit and optional RSS feeds
+- Verify the `articles` table contains normalized rows with `source`, `url`, `canonical_url`, `published_at`, and `source_meta`
+- Re-run the worker once and verify duplicate canonical URLs do not create duplicate article rows
 
 ### Day 5: Clustering eval + synthesis gating + API (8h)
 

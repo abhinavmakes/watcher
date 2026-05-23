@@ -7,7 +7,21 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.connectors.base import ArticleConnector
+from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput
+from app.services.article_store import insert_articles
+
+
+class PipelineError(Exception):
+    """Base for all pipeline failures."""
+
+
+class IngestionError(PipelineError):
+    """Raised when an error occurs during article ingestion."""
+
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(f"Failed to ingest articles: {message}")
 
 
 @dataclass(frozen=True)
@@ -42,6 +56,7 @@ class PipelineRunSummary(BaseModel):
     status: Literal["completed"]
     articles_fetched: int = 0
     articles_classified: int = 0
+    articles_inserted: int = 0
     clusters_updated: int = 0
     clusters_created: int = 0
     source_stats: dict[str, SourceFetchStats] = Field(default_factory=dict)
@@ -62,9 +77,7 @@ def _deduplicate_fetched_articles(articles: Sequence[ArticleInput]) -> DedupResu
     duplicates_by_source: dict[str, int] = {}
     for article in articles:
         if article.canonical_url in seen_canonical_urls:
-            duplicates_by_source[article.source] = (
-                duplicates_by_source.get(article.source, 0) + 1
-            )
+            duplicates_by_source[article.source] = duplicates_by_source.get(article.source, 0) + 1
             continue
         seen_canonical_urls.add(article.canonical_url)
         unique_articles.append(article)
@@ -74,7 +87,10 @@ def _deduplicate_fetched_articles(articles: Sequence[ArticleInput]) -> DedupResu
     )
 
 
-async def run_pipeline(connector_specs: Sequence[ConnectorSpec]) -> PipelineRunSummary:
+async def run_pipeline(
+    connector_specs: Sequence[ConnectorSpec],
+    gateway: SupabaseGateway | None = None,
+) -> PipelineRunSummary:
     started_at = datetime.now(UTC)
 
     results = await asyncio.gather(*(_fetch_from_connector(spec) for spec in connector_specs))
@@ -89,11 +105,18 @@ async def run_pipeline(connector_specs: Sequence[ConnectorSpec]) -> PipelineRunS
         )
         for result in results
     }
+    articles_inserted: int = 0
+    if gateway is not None:
+        articles_inserted = await insert_articles(
+            gateway=gateway,
+            articles=dedup_result.articles,
+        )
 
     return PipelineRunSummary(
         started_at=started_at,
         completed_at=datetime.now(UTC),
         articles_fetched=len(all_articles),
+        articles_inserted=articles_inserted,
         source_stats=source_stats,
         status="completed",
     )

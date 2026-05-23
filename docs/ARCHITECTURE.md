@@ -43,6 +43,11 @@ Watcher is composed of three independently deployable services and one managed d
 
 **Supabase** — The unified data layer. Postgres stores articles, clusters, user preferences, and encrypted BYOK keys. pgvector handles embedding storage and similarity search. Supabase Auth provides GitHub OAuth. Row-Level Security ensures users can only access their own preferences and keys. Watcher uses a hosted Supabase project from day 1; tests should isolate database access behind service boundaries where possible instead of requiring a local Supabase stack.
 
+The backend worker and API use the Supabase service role from server-side code
+only. Migrations grant the service role table access explicitly; RLS policies
+remain the protection boundary for user-owned tables when accessed with user
+JWTs. Service-role keys must never be exposed to the frontend.
+
 **Next.js Dashboard** — The frontend deployed on Vercel. Server components fetch initial cluster data. Client-side hooks subscribe to SSE for live updates and handle the chat interaction. Supabase client SDK manages auth state.
 
 ## Why these boundaries
@@ -82,11 +87,22 @@ Both deploy from the same monorepo on Railway. Railway supports multiple service
      source_metadata: dict    # source-specific fields (HN score, GH stars, etc.)
    }
 
-3. DEDUPLICATE
-   Canonical URL-based dedup against existing articles in DB.
+3. DEDUPLICATE + PERSIST
+   Canonical URL-based dedup happens in two layers:
+   - in-memory dedup within the current fetch batch so downstream stages do
+     not process the same canonical URL twice in one run
+   - database idempotency through the articles.canonical_url unique index and
+     an upsert that ignores already-seen URLs from previous runs
+
    URLs are canonicalized before comparison: lowercase host, remove www,
    strip UTM/tracking params, normalize trailing slashes.
-   Skip articles already ingested in previous runs.
+
+   The storage boundary lives in `app/services/article_store.py`.
+   `insert_articles(gateway, articles)` receives an already-created
+   SupabaseGateway, maps `ArticleInput` into the `articles` table shape, uses
+   `model_dump(mode="json")` so datetimes and URLs are JSON-safe, and upserts
+   rows on `canonical_url`. The worker/service entrypoint owns client creation;
+   storage functions only map and execute database operations.
 
 4. CLASSIFY (PydanticAI agent, Gemini Flash-Lite)
    Input: ArticleInput
@@ -182,6 +198,12 @@ the fixture from `backend/` with:
 ```bash
 python -m scripts.generate_seed_articles
 ```
+
+This command writes `fixtures/seed_articles.json`; it does not insert into
+Supabase. Once Supabase credentials are configured and migrations are applied,
+the next smoke test is to run the worker pipeline with a real gateway and verify
+that normalized articles appear in the `articles` table. Seed fixtures remain
+the fallback demo data path; the live pipeline remains the source of truth.
 
 ### Dashboard request flow
 

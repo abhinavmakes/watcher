@@ -82,6 +82,8 @@ The product's opinion: you don't need to read 50 articles. You need to see 8 clu
 
 **Hosted Supabase from day 1** — The project is built against the real managed Supabase surface early so Auth, RLS, pgvector, and migrations are exercised before deployment week. Tests isolate database access where possible.
 
+**Idempotent article persistence** — Connectors emit `ArticleInput`; the pipeline deduplicates the current fetch batch by `canonical_url`; `article_store.insert_articles()` maps the normalized schema into Supabase rows and upserts on the `canonical_url` unique index. Re-running ingestion should not create duplicate articles.
+
 **Seed data for demo readiness** — A small committed fixture set from HN and curated RSS keeps local demos from opening empty while live connector output is sparse. Regenerate it from `backend/` with `python -m scripts.generate_seed_articles`.
 
 ## Running locally
@@ -101,6 +103,9 @@ uvicorn app.main:app --reload
 
 # Worker (separate terminal)
 python -m worker.run
+
+# Regenerate local seed fixture only; this does not insert into Supabase
+python -m scripts.generate_seed_articles
 
 # Frontend
 cd frontend

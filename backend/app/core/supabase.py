@@ -1,8 +1,7 @@
 from typing import Any
 
-from supabase import AsyncClient, create_async_client
-
 from app.core.config import Settings, settings
+from supabase import AsyncClient, create_async_client
 
 
 class SupabaseConfigError(RuntimeError):

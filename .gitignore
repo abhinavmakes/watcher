@@ -31,6 +31,10 @@ env/
 *.log
 *.pid
 
+# Supabase CLI local state
+supabase/.temp/
+backend/supabase/.temp/
+
 # Build artifacts
 dist/
 build/
@@ -42,3 +46,4 @@ build/
 CLAUDE.md
 AGENTS.md
 checklist.md
+docs/LEARNING_PROTOCOL.md

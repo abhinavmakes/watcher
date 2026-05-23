@@ -1,7 +1,10 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime
+from typing import cast
 
 import pytest
 
+from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput
 from worker.pipeline import ConnectorSpec, _deduplicate_fetched_articles, run_pipeline
 
@@ -102,9 +105,7 @@ async def test_run_pipeline_returns_empty_summary_when_no_connectors_are_registe
 @pytest.mark.asyncio
 async def test_run_pipeline_records_cross_source_duplicates() -> None:
     canonical_url = "https://example.com/shared-story"
-    hn_connector = FakeConnector(
-        [_article("HN story", source="hn", canonical_url=canonical_url)]
-    )
+    hn_connector = FakeConnector([_article("HN story", source="hn", canonical_url=canonical_url)])
     rss_connector = FakeConnector(
         [_article("RSS story", source="rss", canonical_url=canonical_url)]
     )
@@ -121,6 +122,64 @@ async def test_run_pipeline_records_cross_source_duplicates() -> None:
     assert summary.source_stats["hn"].duplicates == 0
     assert summary.source_stats["rss"].returned == 1
     assert summary.source_stats["rss"].duplicates == 1
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provided(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    canonical_url = "https://example.com/shared-story"
+    first_article = _article("HN story", source="hn", canonical_url=canonical_url)
+    duplicate_article = _article("RSS story", source="rss", canonical_url=canonical_url)
+    inserted_articles: list[ArticleInput] = []
+
+    async def fake_insert_articles(
+        gateway: SupabaseGateway,
+        articles: Sequence[ArticleInput],
+    ) -> int:
+        inserted_articles.extend(articles)
+        return len(articles)
+
+    monkeypatch.setattr("worker.pipeline.insert_articles", fake_insert_articles)
+
+    summary = await run_pipeline(
+        [
+            ConnectorSpec(name="hn", connector=FakeConnector([first_article]), limit=10),
+            ConnectorSpec(name="rss", connector=FakeConnector([duplicate_article]), limit=10),
+        ],
+        gateway=cast(SupabaseGateway, object()),
+    )
+
+    assert summary.articles_fetched == 2
+    assert summary.articles_inserted == 1
+    assert inserted_articles == [first_article]
+    assert summary.source_stats["hn"].duplicates == 0
+    assert summary.source_stats["rss"].duplicates == 1
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_skips_insert_when_gateway_is_not_provided(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    insert_called = False
+
+    async def fake_insert_articles(
+        gateway: SupabaseGateway,
+        articles: Sequence[ArticleInput],
+    ) -> int:
+        nonlocal insert_called
+        insert_called = True
+        return len(articles)
+
+    monkeypatch.setattr("worker.pipeline.insert_articles", fake_insert_articles)
+
+    summary = await run_pipeline(
+        [ConnectorSpec(name="hn", connector=FakeConnector([_article("HN story")]), limit=10)]
+    )
+
+    assert summary.articles_fetched == 1
+    assert summary.articles_inserted == 0
+    assert insert_called is False
 
 
 def test_deduplicate_fetched_articles_keeps_unique_canonical_urls() -> None:
