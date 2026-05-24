@@ -2,14 +2,13 @@ import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal
-
-from pydantic import BaseModel, Field
 
 from app.connectors.base import ArticleConnector
 from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput
+from app.models.pipeline_run import PipelineRunStatus, PipelineRunSummary, SourceFetchStats
 from app.services.article_store import insert_articles
+from app.services.pipeline_run_store import insert_pipeline_run
 
 
 class PipelineError(Exception):
@@ -42,24 +41,6 @@ class FetchResult:
 class DedupResult:
     articles: list[ArticleInput]
     duplicates_by_source: dict[str, int]
-
-
-class SourceFetchStats(BaseModel):
-    returned: int
-    duplicates: int = 0
-    error: str | None = None
-
-
-class PipelineRunSummary(BaseModel):
-    started_at: datetime
-    completed_at: datetime
-    status: Literal["completed"]
-    articles_fetched: int = 0
-    articles_classified: int = 0
-    articles_inserted: int = 0
-    clusters_updated: int = 0
-    clusters_created: int = 0
-    source_stats: dict[str, SourceFetchStats] = Field(default_factory=dict)
 
 
 async def _fetch_from_connector(spec: ConnectorSpec) -> FetchResult:
@@ -105,18 +86,21 @@ async def run_pipeline(
         )
         for result in results
     }
-    articles_inserted: int = 0
     if gateway is not None:
-        articles_inserted = await insert_articles(
+        await insert_articles(
             gateway=gateway,
             articles=dedup_result.articles,
         )
 
-    return PipelineRunSummary(
+    summary = PipelineRunSummary(
         started_at=started_at,
         completed_at=datetime.now(UTC),
+        status=PipelineRunStatus.COMPLETED,
         articles_fetched=len(all_articles),
-        articles_inserted=articles_inserted,
         source_stats=source_stats,
-        status="completed",
     )
+
+    if gateway is not None:
+        await insert_pipeline_run(gateway=gateway, summary=summary)
+
+    return summary
