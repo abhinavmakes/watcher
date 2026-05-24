@@ -164,11 +164,35 @@ Both deploy from the same monorepo on Railway. Railway supports multiple service
    Normalized to 0-100 scale.
    Clusters with no new articles in 48h marked as "stale."
 
+   Stale does not mean deleted. The ingestion pipeline should mark freshness
+   state only; destructive retention cleanup is a separate operational job so
+   a partial pipeline failure cannot delete historical data and then fail later
+   in classification, embedding, clustering, or synthesis.
+
 9. RECORD PIPELINE RUN
    Insert into pipeline_runs: {started_at, completed_at, status,
    articles_fetched, articles_classified, clusters_updated, clusters_created,
    source_stats}
 ```
+
+### Data retention and cleanup
+
+Watcher keeps old articles during the MVP because they are useful for
+canonical URL deduplication, clustering evaluation, RAG citations, debugging,
+and demo reproducibility. The dashboard should hide or deprioritize stale
+clusters, not delete their backing data during ingestion.
+
+Before running Watcher as a long-lived deployment, add a separate retention job:
+
+- delete or archive `pipeline_runs` older than 30 days
+- delete or archive stale clusters older than 30-60 days
+- delete articles only after their cluster memberships are no longer needed
+- never run destructive cleanup inside the normal fetch/classify/embed/cluster
+  pipeline
+
+This is deliberately post-MVP scope. At the expected scale of hundreds of
+articles per day, retaining several weeks of data is cheap and helps validate
+embedding and clustering quality.
 
 ### Clustering threshold calibration
 

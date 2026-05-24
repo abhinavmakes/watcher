@@ -114,6 +114,7 @@ tracking are stable should embedding/classification work start.
 - Count articles per cluster in time buckets (6h, 24h, 48h)
 - Weighted formula, normalize to 0-100
 - Mark stale clusters (no new articles in 48h)
+- Do not delete old articles during ingestion; freshness state and retention cleanup are separate concerns
 
 **Pipeline orchestration**
 - worker/pipeline.py: orchestrate full flow
@@ -303,6 +304,13 @@ tracking are stable should embedding/classification work start.
 
 **Supabase pgvector performance:** At 500 articles/day, you'll have ~15K articles after a month. pgvector with IVFFlat index handles this easily. Won't be a problem until 100K+ rows.
 
+**Old data accumulates:** Do not add destructive deletes to the normal ingestion
+pipeline. For MVP, hide stale clusters and keep articles for deduplication, RAG,
+debugging, and clustering evaluation. Add a separate retention job after core
+pipeline quality is proven: delete or archive pipeline runs older than 30 days,
+stale clusters older than 30-60 days, and articles only after their cluster
+memberships are no longer needed.
+
 **BYOK key security concerns:** Use AES-256-GCM with a server-side key. Never log keys, never return them to the frontend. This is the industry standard pattern (Cursor, TypingMind, LibreChat all do this). Document it clearly in the README.
 
 ## Post-launch priorities (week 4+)
@@ -310,5 +318,6 @@ tracking are stable should embedding/classification work start.
 1. Email digest: weekly synthesis delivered via Resend
 2. Custom RSS feed management: let users add their own feeds
 3. Historical momentum charts: sparkline over days, not just hours
-4. OpenRouter as additional BYOK provider option
-5. Blog post: "How I built a tech intelligence dashboard with PydanticAI" (Blog 3 or 4 in the series)
+4. Retention cleanup job: archive/delete old pipeline runs, stale clusters, and unneeded old articles outside the ingestion path
+5. OpenRouter as additional BYOK provider option
+6. Blog post: "How I built a tech intelligence dashboard with PydanticAI" (Blog 3 or 4 in the series)
