@@ -84,6 +84,8 @@ The product's opinion: you don't need to read 50 articles. You need to see 8 clu
 
 **Idempotent article persistence** — Connectors emit `ArticleInput`; the pipeline deduplicates the current fetch batch by `canonical_url`; `article_store.insert_articles()` maps the normalized schema into Supabase rows and upserts on the `canonical_url` unique index. Re-running ingestion should not create duplicate articles.
 
+**Freshness over deletion in MVP** — Clusters with no new articles in 48 hours are marked stale and hidden or deprioritized. Old articles are kept for deduplication, RAG citations, clustering eval, and debugging. Destructive retention cleanup belongs in a separate post-MVP job, not inside ingestion.
+
 **Seed data for demo readiness** — A small committed fixture set from HN and curated RSS keeps local demos from opening empty while live connector output is sparse. Regenerate it from `backend/` with `python -m scripts.generate_seed_articles`.
 
 ## Running locally

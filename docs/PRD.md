@@ -190,6 +190,7 @@ This list is stored as configuration, not code. New feeds can be added without c
 - Email digests or scheduled notifications
 - User-managed RSS feed additions
 - Historical momentum trend charts
+- Automated historical data deletion or archival jobs
 - Team or organization features
 - Mobile native app
 - Landing page or marketing site (dashboard is the landing page)

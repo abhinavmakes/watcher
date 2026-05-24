@@ -6,6 +6,7 @@ import pytest
 
 from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput
+from app.models.pipeline_run import PipelineRunSummary
 from worker.pipeline import ConnectorSpec, _deduplicate_fetched_articles, run_pipeline
 
 
@@ -132,6 +133,7 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     first_article = _article("HN story", source="hn", canonical_url=canonical_url)
     duplicate_article = _article("RSS story", source="rss", canonical_url=canonical_url)
     inserted_articles: list[ArticleInput] = []
+    persisted_summaries: list[PipelineRunSummary] = []
 
     async def fake_insert_articles(
         gateway: SupabaseGateway,
@@ -142,6 +144,14 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
 
     monkeypatch.setattr("worker.pipeline.insert_articles", fake_insert_articles)
 
+    async def fake_insert_pipeline_run(
+        gateway: SupabaseGateway,
+        summary: PipelineRunSummary,
+    ) -> None:
+        persisted_summaries.append(summary)
+
+    monkeypatch.setattr("worker.pipeline.insert_pipeline_run", fake_insert_pipeline_run)
+
     summary = await run_pipeline(
         [
             ConnectorSpec(name="hn", connector=FakeConnector([first_article]), limit=10),
@@ -151,8 +161,8 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     )
 
     assert summary.articles_fetched == 2
-    assert summary.articles_inserted == 1
     assert inserted_articles == [first_article]
+    assert persisted_summaries == [summary]
     assert summary.source_stats["hn"].duplicates == 0
     assert summary.source_stats["rss"].duplicates == 1
 
@@ -178,7 +188,6 @@ async def test_run_pipeline_skips_insert_when_gateway_is_not_provided(
     )
 
     assert summary.articles_fetched == 1
-    assert summary.articles_inserted == 0
     assert insert_called is False
 
 
