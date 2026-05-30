@@ -70,6 +70,8 @@ The product's opinion: you don't need to read 50 articles. You need to see 8 clu
 
 **PydanticAI over LangGraph** — The agent pipeline is a linear DAG (classify → embed → cluster → synthesize), not a cyclic state machine. PydanticAI gives typed inputs/outputs with regular Python composition. LangGraph would add graph DSL overhead for a problem that doesn't need it.
 
+**Tools where they fit** — Ingestion uses narrow structured-output agents because the flow is deterministic. RAG chat uses tool-calling because user questions are open-ended: the chat agent can retrieve cluster metadata, source articles, and citation details before answering.
+
 **Supabase as unified data layer** — pgvector for semantic search, Postgres for metadata, Auth for OAuth, Row-Level Security for multi-tenant BYOK key storage. One service instead of three (ChromaDB + separate DB + Clerk).
 
 **SSE over WebSocket** — Dashboard updates and chat streaming are both server-to-client patterns. SSE runs over plain HTTP with built-in browser reconnection. WebSocket's bidirectional capability would be unused overhead.
@@ -77,6 +79,10 @@ The product's opinion: you don't need to read 50 articles. You need to see 8 clu
 **Model splitting by task** — Classification uses the cheapest model (Flash-Lite, free tier). Synthesis uses a better model (Flash) because it's the product's voice. Standard production pattern that optimizes cost without sacrificing output quality where it matters.
 
 **BYOK with direct provider keys** — Users bring their own OpenAI, Anthropic, or Google API key for the chat feature. No middleman (OpenRouter) forced on users who already pay for a provider. LiteLLM normalizes the provider differences on the backend.
+
+**Separate pipeline config from BYOK catalog** — Watcher's classifier, synthesizer, and embedding model names are server-side deployment settings. User-facing BYOK provider/model options are product metadata and should be served from a backend catalog so frontend dropdowns and backend validation stay aligned.
+
+**Eval before frontend** — Every agent ships with a dedicated eval before any UI work begins. Classifier: pytest over a labeled 50-100 article fixture, reporting precision/recall on noise detection and per-domain accuracy. Clustering: cosine-similarity calibration over hand-labeled article pairs. Synthesis: LLM-as-judge with a factuality/grounding rubric. Retrieval: Ragas (`context_precision`, `faithfulness`) over a hand-crafted question/context fixture. Tests prove the code runs; evals prove the behavior is correct — they are not the same.
 
 **Risk-first build order** — The first milestone uses only HN and curated RSS because they have the best signal-to-noise for embeddings, clustering, and RAG. Lower-quality firehose sources such as Dev.to are intentionally excluded from the MVP; GitHub Trending and Product Hunt are added only after clustering has been evaluated on real article pairs.
 

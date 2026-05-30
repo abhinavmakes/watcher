@@ -5,6 +5,7 @@ import pytest
 
 from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput
+from app.models.classification import ArticleDomain, ClassificationOutput
 from app.services.article_store import insert_articles
 
 
@@ -63,11 +64,23 @@ def _article() -> ArticleInput:
     )
 
 
+def _classification() -> ClassificationOutput:
+    return ClassificationOutput(
+        domains=[ArticleDomain.LLMS, ArticleDomain.AI_AGENTS],
+        relevance_score=0.82,
+        is_noise=False,
+        reason="LLM agent framework release with concrete impact.",
+    )
+
+
 @pytest.mark.asyncio
-async def test_insert_articles_maps_article_input_to_articles_table_row() -> None:
+async def test_insert_articles_writes_article_fields_without_classification() -> None:
     fake_gateway = FakeGateway()
 
-    inserted_count = await insert_articles(cast(SupabaseGateway, fake_gateway), [_article()])
+    inserted_count = await insert_articles(
+        cast(SupabaseGateway, fake_gateway),
+        [(_article(), None)],
+    )
 
     assert inserted_count == 1
     assert fake_gateway.table_calls == ["articles"]
@@ -88,6 +101,40 @@ async def test_insert_articles_maps_article_input_to_articles_table_row() -> Non
             },
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_insert_articles_writes_classification_fields_when_present() -> None:
+    fake_gateway = FakeGateway()
+
+    inserted_count = await insert_articles(
+        cast(SupabaseGateway, fake_gateway),
+        [(_article(), _classification())],
+    )
+
+    assert inserted_count == 1
+    assert fake_gateway.table_instance.upserted_rows is not None
+    row = fake_gateway.table_instance.upserted_rows[0]
+    assert row["domains"] == ["llms", "ai_agents"]
+    assert row["relevance"] == 0.82
+    assert row["is_noise"] is False
+    assert "relevance_score" not in row
+
+
+@pytest.mark.asyncio
+async def test_insert_articles_omits_classification_keys_when_classification_is_none() -> None:
+    fake_gateway = FakeGateway()
+
+    await insert_articles(
+        cast(SupabaseGateway, fake_gateway),
+        [(_article(), None)],
+    )
+
+    assert fake_gateway.table_instance.upserted_rows is not None
+    row = fake_gateway.table_instance.upserted_rows[0]
+    assert "domains" not in row
+    assert "relevance" not in row
+    assert "is_noise" not in row
 
 
 @pytest.mark.asyncio

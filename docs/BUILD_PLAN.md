@@ -47,7 +47,16 @@ tracking are stable should embedding/classification work start.
 **Classification agent**
 - Implement classifier with PydanticAI
 - Input: ArticleInput → Output: ClassificationOutput (domains, relevance, is_noise)
+- Keep classifier module small: prompt, prompt formatter, agent instance, and wrapper function
+- Use typed schema and prompt rules as initial guardrails; defer custom guardrail framework until real eval failures justify it
 - Test: classify 10 HN articles, verify domain assignments make sense
+
+**Classifier eval set**
+- Build a labeled fixture at `backend/fixtures/classifier_eval.json` with 50-100 real HN/RSS articles hand-labeled with expected `is_noise`, primary domain, and a relevance band (low/mid/high)
+- Add `scripts/eval_classifier.py` (or `tests/test_classifier_eval.py`) that runs the production classifier over the fixture and prints precision/recall on `is_noise`, per-domain accuracy, and a confusion matrix
+- Plain pytest + a JSON fixture; no eval framework needed for this stage
+- Target: noise precision ≥ 0.9, noise recall ≥ 0.75. Iterate on prompt until both are met
+- Re-run after any prompt change. This is the canonical "how do you know it works" answer for the classifier.
 
 ### Day 3-4: Embedding + more connectors (8h)
 
@@ -110,6 +119,12 @@ tracking are stable should embedding/classification work start.
 - One-article items are labeled with `signal_type="single_source"`; low-signal solo items must not use language implying broad momentum
 - Output: title, summary, so_what, key_entities
 
+**Synthesis eval (LLM-as-judge)**
+- Hand-pick 10-15 real clusters and run the synthesizer over them
+- Add `scripts/eval_synthesis.py`: passes each (cluster, synthesis) pair to a judge model (Gemini 2.5 Flash with a fixed rubric) scoring factuality (claims grounded in source articles), no-hedging, and "so what" specificity on a 1-5 scale
+- Store rubric, judge prompt, and per-cluster scores in the script output so results are reproducible
+- Target: mean factuality ≥ 4, no item with factuality < 3. Iterate on the synthesizer prompt or gating rules if the bar is missed.
+
 **Momentum scoring**
 - Count articles per cluster in time buckets (6h, 24h, 48h)
 - Weighted formula, normalize to 0-100
@@ -155,6 +170,7 @@ tracking are stable should embedding/classification work start.
 - GET /keys: return provider + model + key_hash (never the key itself)
 - DELETE /keys/:provider
 - Encryption key from environment variable
+- Keep BYOK provider/model catalog separate from pipeline model settings; backend catalog should drive both frontend dropdowns and backend validation
 - Test: store a key, verify it's encrypted in DB, verify decrypt works
 
 ### Day 8-9: RAG chat (8h)
@@ -168,10 +184,19 @@ tracking are stable should embedding/classification work start.
 **Chat endpoint**
 - POST /chat: accepts message + cluster_id
 - Retrieves user's encrypted key, decrypts
-- Builds prompt: system message + context articles + user question
+- Uses a tool-capable chat agent for open-ended cluster questions; ingestion remains a deterministic DAG
+- Initial tools: get cluster metadata, retrieve relevant cluster articles, fetch citation metadata
+- Builds prompt/tool context from retrieved source articles + user question
 - Calls LiteLLM with user's provider/model/key
 - Streams response back via SSE (StreamingResponse)
 - Test: ask a question about a real cluster, verify answer cites sources
+
+**Retrieval eval with Ragas**
+- Add `scripts/eval_retrieval.py` using Ragas (`pip install ragas`)
+- Build 20 hand-crafted question/expected-context pairs across 5-8 real clusters in `backend/fixtures/retrieval_eval.json`
+- Run Ragas metrics: `context_precision`, `context_recall`, `faithfulness`, `answer_relevancy`
+- Ragas is the resume-recognized name for RAG eval; this is the canonical "how do you know retrieval works" answer
+- Target: context_precision ≥ 0.8, faithfulness ≥ 0.85. Iterate on top-k, embedding input formatting, or tool selection if missed.
 
 **Relevance scoring**
 - When fetching clusters, if user is authenticated:
@@ -319,5 +344,7 @@ memberships are no longer needed.
 2. Custom RSS feed management: let users add their own feeds
 3. Historical momentum charts: sparkline over days, not just hours
 4. Retention cleanup job: archive/delete old pipeline runs, stale clusters, and unneeded old articles outside the ingestion path
-5. OpenRouter as additional BYOK provider option
-6. Blog post: "How I built a tech intelligence dashboard with PydanticAI" (Blog 3 or 4 in the series)
+5. Provider catalog endpoint for BYOK model dropdowns and backend validation
+6. Custom classifier guardrails if real eval outputs show repeated schema-valid but behaviorally wrong classifications
+7. OpenRouter as additional BYOK provider option
+8. Blog post: "How I built a tech intelligence dashboard with PydanticAI" (Blog 3 or 4 in the series)
