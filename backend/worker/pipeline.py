@@ -1,14 +1,20 @@
 import asyncio
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from app.agents.classifier import classify_article
 from app.connectors.base import ArticleConnector
+from app.core.config import settings
 from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput
+from app.models.classification import ClassificationOutput
 from app.models.pipeline_run import PipelineRunStatus, PipelineRunSummary, SourceFetchStats
 from app.services.article_store import insert_articles
 from app.services.pipeline_run_store import insert_pipeline_run
+
+logger = logging.getLogger(__name__)
 
 
 class PipelineError(Exception):
@@ -68,6 +74,26 @@ def _deduplicate_fetched_articles(articles: Sequence[ArticleInput]) -> DedupResu
     )
 
 
+async def _classify_articles(
+    articles: Sequence[ArticleInput],
+) -> list[tuple[ArticleInput, ClassificationOutput | None]]:
+    results: list[tuple[ArticleInput, ClassificationOutput | None]] = []
+    interval = 60 / settings.classifier_rpm
+    for i, article in enumerate(articles):
+        if i > 0:
+            await asyncio.sleep(interval)
+        try:
+            result: ClassificationOutput | None = await classify_article(article)
+        except Exception as e:
+            logger.warning(
+                "classification_failed",
+                extra={"canonical_url": article.canonical_url, "error": str(e)},
+            )
+            result = None
+        results.append((article, result))
+    return results
+
+
 async def run_pipeline(
     connector_specs: Sequence[ConnectorSpec],
     gateway: SupabaseGateway | None = None,
@@ -77,7 +103,7 @@ async def run_pipeline(
     results = await asyncio.gather(*(_fetch_from_connector(spec) for spec in connector_specs))
     all_articles = [article for result in results for article in result.articles]
     dedup_result = _deduplicate_fetched_articles(all_articles)
-
+    classified_articles = await _classify_articles(dedup_result.articles)
     source_stats = {
         result.source: SourceFetchStats(
             returned=len(result.articles),
@@ -89,7 +115,7 @@ async def run_pipeline(
     if gateway is not None:
         await insert_articles(
             gateway=gateway,
-            articles=dedup_result.articles,
+            articles=classified_articles,
         )
 
     summary = PipelineRunSummary(
@@ -97,6 +123,7 @@ async def run_pipeline(
         completed_at=datetime.now(UTC),
         status=PipelineRunStatus.COMPLETED,
         articles_fetched=len(all_articles),
+        articles_classified=sum(1 for _, c in classified_articles if c is not None),
         source_stats=source_stats,
     )
 

@@ -39,9 +39,9 @@ class Settings(BaseSettings):
 
     google_api_key: SecretStr | None = Field(default=None, repr=False)
     classifier_model: str = "google-gla:gemini-2.5-flash-lite"
+    classifier_rpm: int = Field(default=15, ge=1)
     synthesis_model: str = "google-gla:gemini-2.5-flash"
     embedding_model: str = "text-embedding-005"
-
     encryption_key: SecretStr | None = Field(default=None, repr=False)
 
     pipeline_interval_minutes: int = Field(default=30, ge=1)

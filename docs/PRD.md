@@ -130,6 +130,11 @@ Google: gemini-2.5-flash, gemini-2.5-pro
 
 Plus "Custom model" text input for each provider.
 
+The curated provider/model catalog should be sourced from the backend so the
+frontend dropdown and backend validation cannot drift. This catalog is separate
+from Watcher's internal pipeline model settings for classification, synthesis,
+and embeddings.
+
 ### F4: Authentication
 
 - GitHub OAuth via Supabase Auth

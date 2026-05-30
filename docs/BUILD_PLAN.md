@@ -6,21 +6,20 @@ Build order is risk-first: pipeline with HN + curated RSS → clustering eval �
 
 ## Current checkpoint
 
-The backend has the first ingestion slice in place:
-- HN and RSS connectors normalize into `ArticleInput`
-- the worker fetch stage runs connector specs concurrently and records per-source stats
-- current-run duplicate articles are removed by `canonical_url`
-- `app/services/article_store.py` maps articles into Supabase `articles` rows
-- article persistence uses upsert on `canonical_url` so repeated ingestion runs are idempotent
-- focused tests cover connector failures, deduplication, empty connector lists, and article-store mapping
-- the live Supabase smoke test has passed: running the worker inserts HN
-  articles into the hosted `articles` table, stores `source_meta` as JSONB, and
-  repeated runs do not create duplicate `canonical_url` rows
+Fetch → dedup → classify → persist works end to end against live Supabase and Gemini:
 
-The next slice is not clustering yet. First persist each worker execution into
-`pipeline_runs` so the backend has an audit trail and the future SSE endpoint
-has a table to poll for completed runs. Only after article persistence and run
-tracking are stable should embedding/classification work start.
+- HN and RSS connectors normalize into `ArticleInput`
+- Worker fetch stage runs connector specs concurrently and records per-source stats
+- Current-run duplicate articles removed by `canonical_url`
+- `article_store.insert_articles` upserts on `canonical_url` (idempotent across runs)
+- `pipeline_runs` audit row written every execution (`articles_fetched`, `articles_classified`, `source_stats`)
+- **Classifier agent (`app/agents/classifier.py`) live: Gemini Flash-Lite via PydanticAI, structured output (`domains`, `relevance_score`, `is_noise`, `reason`)**
+- **Batch orchestrator `_classify_articles` in `worker/pipeline.py`: serial loop with `sleep(60 / classifier_rpm)` between calls, per-article try/except, function contract never raises**
+- **Classification columns (`domains`, `relevance`, `is_noise`) persisted alongside the article row when present; DB defaults handle failed classifications**
+- 49/49 tests green; ruff and mypy clean
+- Live smoke against Gemini + hosted Supabase passed (5 HN articles classified, rows visible)
+
+The next slice is classifier eval, not embedding. We lock in quality on the classifier before stacking another agent stage on top. See `docs/NEXT_SESSION.md`.
 
 ## Week 1: Data pipeline + backend core
 
@@ -47,7 +46,16 @@ tracking are stable should embedding/classification work start.
 **Classification agent**
 - Implement classifier with PydanticAI
 - Input: ArticleInput → Output: ClassificationOutput (domains, relevance, is_noise)
+- Keep classifier module small: prompt, prompt formatter, agent instance, and wrapper function
+- Use typed schema and prompt rules as initial guardrails; defer custom guardrail framework until real eval failures justify it
 - Test: classify 10 HN articles, verify domain assignments make sense
+
+**Classifier eval set**
+- Build a labeled fixture at `backend/fixtures/classifier_eval.json` with 50-100 real HN/RSS articles hand-labeled with expected `is_noise`, primary domain, and a relevance band (low/mid/high)
+- Add `scripts/eval_classifier.py` (or `tests/test_classifier_eval.py`) that runs the production classifier over the fixture and prints precision/recall on `is_noise`, per-domain accuracy, and a confusion matrix
+- Plain pytest + a JSON fixture; no eval framework needed for this stage
+- Target: noise precision ≥ 0.9, noise recall ≥ 0.75. Iterate on prompt until both are met
+- Re-run after any prompt change. This is the canonical "how do you know it works" answer for the classifier.
 
 ### Day 3-4: Embedding + more connectors (8h)
 
@@ -110,6 +118,12 @@ tracking are stable should embedding/classification work start.
 - One-article items are labeled with `signal_type="single_source"`; low-signal solo items must not use language implying broad momentum
 - Output: title, summary, so_what, key_entities
 
+**Synthesis eval (LLM-as-judge)**
+- Hand-pick 10-15 real clusters and run the synthesizer over them
+- Add `scripts/eval_synthesis.py`: passes each (cluster, synthesis) pair to a judge model (Gemini 2.5 Flash with a fixed rubric) scoring factuality (claims grounded in source articles), no-hedging, and "so what" specificity on a 1-5 scale
+- Store rubric, judge prompt, and per-cluster scores in the script output so results are reproducible
+- Target: mean factuality ≥ 4, no item with factuality < 3. Iterate on the synthesizer prompt or gating rules if the bar is missed.
+
 **Momentum scoring**
 - Count articles per cluster in time buckets (6h, 24h, 48h)
 - Weighted formula, normalize to 0-100
@@ -155,6 +169,7 @@ tracking are stable should embedding/classification work start.
 - GET /keys: return provider + model + key_hash (never the key itself)
 - DELETE /keys/:provider
 - Encryption key from environment variable
+- Keep BYOK provider/model catalog separate from pipeline model settings; backend catalog should drive both frontend dropdowns and backend validation
 - Test: store a key, verify it's encrypted in DB, verify decrypt works
 
 ### Day 8-9: RAG chat (8h)
@@ -168,10 +183,19 @@ tracking are stable should embedding/classification work start.
 **Chat endpoint**
 - POST /chat: accepts message + cluster_id
 - Retrieves user's encrypted key, decrypts
-- Builds prompt: system message + context articles + user question
+- Uses a tool-capable chat agent for open-ended cluster questions; ingestion remains a deterministic DAG
+- Initial tools: get cluster metadata, retrieve relevant cluster articles, fetch citation metadata
+- Builds prompt/tool context from retrieved source articles + user question
 - Calls LiteLLM with user's provider/model/key
 - Streams response back via SSE (StreamingResponse)
 - Test: ask a question about a real cluster, verify answer cites sources
+
+**Retrieval eval with Ragas**
+- Add `scripts/eval_retrieval.py` using Ragas (`pip install ragas`)
+- Build 20 hand-crafted question/expected-context pairs across 5-8 real clusters in `backend/fixtures/retrieval_eval.json`
+- Run Ragas metrics: `context_precision`, `context_recall`, `faithfulness`, `answer_relevancy`
+- Ragas is the resume-recognized name for RAG eval; this is the canonical "how do you know retrieval works" answer
+- Target: context_precision ≥ 0.8, faithfulness ≥ 0.85. Iterate on top-k, embedding input formatting, or tool selection if missed.
 
 **Relevance scoring**
 - When fetching clusters, if user is authenticated:
@@ -319,5 +343,7 @@ memberships are no longer needed.
 2. Custom RSS feed management: let users add their own feeds
 3. Historical momentum charts: sparkline over days, not just hours
 4. Retention cleanup job: archive/delete old pipeline runs, stale clusters, and unneeded old articles outside the ingestion path
-5. OpenRouter as additional BYOK provider option
-6. Blog post: "How I built a tech intelligence dashboard with PydanticAI" (Blog 3 or 4 in the series)
+5. Provider catalog endpoint for BYOK model dropdowns and backend validation
+6. Custom classifier guardrails if real eval outputs show repeated schema-valid but behaviorally wrong classifications
+7. OpenRouter as additional BYOK provider option
+8. Blog post: "How I built a tech intelligence dashboard with PydanticAI" (Blog 3 or 4 in the series)

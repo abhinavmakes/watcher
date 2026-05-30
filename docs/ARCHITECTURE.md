@@ -194,6 +194,28 @@ This is deliberately post-MVP scope. At the expected scale of hundreds of
 articles per day, retaining several weeks of data is cheap and helps validate
 embedding and clustering quality.
 
+### Eval methodology
+
+Every agent in the pipeline has a dedicated eval. Tests prove the code runs;
+evals prove the behavior is correct. The two are not the same.
+
+- **Classifier eval** — pytest over a labeled fixture of 50-100 real HN/RSS
+  articles. Reports precision/recall on `is_noise`, per-domain accuracy, and a
+  confusion matrix. Targets: noise precision ≥ 0.9, recall ≥ 0.75.
+- **Clustering eval** — `scripts/eval_clustering.py` (already specified above).
+  Calibrates the 0.85/0.83 similarity thresholds against hand-labeled article
+  pairs before any frontend work begins.
+- **Synthesis eval** — LLM-as-judge with a fixed rubric (factuality, no-hedging,
+  "so what" specificity). 10-15 real clusters scored 1-5.
+- **Retrieval eval** — Ragas (`context_precision`, `context_recall`,
+  `faithfulness`, `answer_relevancy`) over a 20-pair fixture once the RAG chat
+  endpoint exists.
+
+Eval fixtures live in `backend/fixtures/` and are committed. Eval scripts are
+intentionally small and reproducible — no MLflow, no Weights & Biases, no
+custom dashboard for MVP. The bar is: any reviewer can clone the repo, run one
+script, and see the numbers.
+
 ### Clustering threshold calibration
 
 Before frontend work starts, run a manual eval script against real Watcher
@@ -270,6 +292,23 @@ User types question in cluster detail chat panel
 
 User sees streaming response with inline citations
 ```
+
+The chat path is the natural place for a tool-using PydanticAI agent. Unlike
+ingestion, user questions are open-ended: the agent may need cluster metadata,
+retrieved articles, or a citation lookup before answering. Keep ingestion as a
+deterministic Python DAG with narrow structured-output agents; use tools in chat
+where the model must choose which retrieval action to take.
+
+Initial chat tools:
+
+- `get_cluster_metadata(cluster_id)` returns title, synthesis, domains,
+  momentum, and article count
+- `retrieve_cluster_articles(cluster_id, query)` embeds the question and returns
+  the most relevant source articles inside that cluster
+- `get_article_source(article_id)` returns citation metadata for a cited article
+
+Tool outputs must contain source IDs/URLs so the final answer can cite articles
+instead of relying on model memory.
 
 MVP retrieval uses one embedding per article and retrieves whole articles as
 context. There is intentionally no `article_chunks` table in the initial
@@ -401,6 +440,24 @@ BYOK API keys are encrypted at rest using AES-256-GCM. The encryption key is sto
 4. When needed for a chat request, decrypts in memory, uses, discards
 5. Key never logged, never stored in plaintext, never sent back to frontend
 
+### Provider and model catalog
+
+Keep pipeline model configuration separate from the user-facing BYOK provider
+catalog.
+
+- Pipeline model names such as `CLASSIFIER_MODEL`, `SYNTHESIS_MODEL`, and
+  `EMBEDDING_MODEL` live in backend settings because they are deployment
+  configuration.
+- BYOK providers and model dropdown options are product metadata. Expose them
+  from a backend service such as `app/services/provider_catalog.py` and, when
+  needed by the frontend, a read-only API endpoint such as `GET /providers`.
+- Do not hardcode BYOK model lists separately in frontend components and backend
+  validation. The backend catalog should become the source of truth for both UI
+  rendering and key/model validation.
+- Do not mix BYOK chat catalog work into pipeline agent slices. Classification,
+  synthesis, and embeddings use Watcher's server-side Google configuration; chat
+  uses the user's stored provider/model/key through LiteLLM.
+
 ## API surface
 
 ### Public endpoints (no auth required)
@@ -452,7 +509,11 @@ POST   /chat
 
 ## Agent definitions (PydanticAI)
 
-Each agent is a standalone Python module with typed input/output schemas.
+Each agent is a standalone Python module with typed input/output schemas. Keep
+agent modules simple until there is real duplication: prompt constants,
+formatting helpers, and a `classify_article()`/`synthesize_cluster()` wrapper
+are enough. Avoid a shared `agents/base.py` or custom guardrail framework until
+two or more agents prove they need the same behavior.
 
 ### Classification agent
 
@@ -469,6 +530,7 @@ class ClassificationOutput(BaseModel):
     domains: list[str]        # constrained to known domain list
     relevance_score: float    # 0.0 - 1.0
     is_noise: bool
+    reason: str               # one-sentence local eval/debug reason
 
 classifier = Agent(
     model="google-gla:gemini-2.5-flash-lite",
@@ -479,6 +541,13 @@ classifier = Agent(
     Mark as noise if: press release, job posting, off-topic, spam."""
 )
 ```
+
+Initial classifier guardrails are schema-level and prompt-level: stable domain
+enum values, `relevance_score` bounded to 0.0-1.0, one to three domains for
+non-noise articles, and a short reason for local inspection. Add custom
+guardrail code only after real classifier outputs show repeated failures such
+as empty domains on non-noise articles, high relevance with `is_noise=true`, or
+invalid domain values.
 
 ### Synthesis agent
 

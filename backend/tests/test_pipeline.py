@@ -6,8 +6,28 @@ import pytest
 
 from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput
+from app.models.classification import ArticleDomain, ClassificationOutput
 from app.models.pipeline_run import PipelineRunSummary
 from worker.pipeline import ConnectorSpec, _deduplicate_fetched_articles, run_pipeline
+
+
+@pytest.fixture(autouse=True)
+def _stub_classifier(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch classify_article and the rate-limit sleep so pipeline tests stay hermetic and fast."""
+
+    async def fake_classify_article(article: ArticleInput) -> ClassificationOutput:
+        return ClassificationOutput(
+            domains=[ArticleDomain.LLMS],
+            relevance_score=0.5,
+            is_noise=False,
+            reason="stub",
+        )
+
+    async def fake_sleep(seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr("worker.pipeline.classify_article", fake_classify_article)
+    monkeypatch.setattr("worker.pipeline.asyncio.sleep", fake_sleep)
 
 
 class FakeConnector:
@@ -58,7 +78,7 @@ async def test_run_pipeline_fetches_from_all_connectors() -> None:
 
     assert summary.status == "completed"
     assert summary.articles_fetched == 2
-    assert summary.articles_classified == 0
+    assert summary.articles_classified == 2
     assert summary.clusters_updated == 0
     assert summary.clusters_created == 0
     assert summary.source_stats["hn"].returned == 1
@@ -132,14 +152,14 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     canonical_url = "https://example.com/shared-story"
     first_article = _article("HN story", source="hn", canonical_url=canonical_url)
     duplicate_article = _article("RSS story", source="rss", canonical_url=canonical_url)
-    inserted_articles: list[ArticleInput] = []
+    inserted_pairs: list[tuple[ArticleInput, ClassificationOutput | None]] = []
     persisted_summaries: list[PipelineRunSummary] = []
 
     async def fake_insert_articles(
         gateway: SupabaseGateway,
-        articles: Sequence[ArticleInput],
+        articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
     ) -> int:
-        inserted_articles.extend(articles)
+        inserted_pairs.extend(articles)
         return len(articles)
 
     monkeypatch.setattr("worker.pipeline.insert_articles", fake_insert_articles)
@@ -161,7 +181,9 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     )
 
     assert summary.articles_fetched == 2
-    assert inserted_articles == [first_article]
+    assert summary.articles_classified == 1
+    assert [article for article, _ in inserted_pairs] == [first_article]
+    assert all(classification is not None for _, classification in inserted_pairs)
     assert persisted_summaries == [summary]
     assert summary.source_stats["hn"].duplicates == 0
     assert summary.source_stats["rss"].duplicates == 1
