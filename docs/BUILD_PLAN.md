@@ -6,21 +6,20 @@ Build order is risk-first: pipeline with HN + curated RSS → clustering eval �
 
 ## Current checkpoint
 
-The backend has the first ingestion slice in place:
-- HN and RSS connectors normalize into `ArticleInput`
-- the worker fetch stage runs connector specs concurrently and records per-source stats
-- current-run duplicate articles are removed by `canonical_url`
-- `app/services/article_store.py` maps articles into Supabase `articles` rows
-- article persistence uses upsert on `canonical_url` so repeated ingestion runs are idempotent
-- focused tests cover connector failures, deduplication, empty connector lists, and article-store mapping
-- the live Supabase smoke test has passed: running the worker inserts HN
-  articles into the hosted `articles` table, stores `source_meta` as JSONB, and
-  repeated runs do not create duplicate `canonical_url` rows
+Fetch → dedup → classify → persist works end to end against live Supabase and Gemini:
 
-The next slice is not clustering yet. First persist each worker execution into
-`pipeline_runs` so the backend has an audit trail and the future SSE endpoint
-has a table to poll for completed runs. Only after article persistence and run
-tracking are stable should embedding/classification work start.
+- HN and RSS connectors normalize into `ArticleInput`
+- Worker fetch stage runs connector specs concurrently and records per-source stats
+- Current-run duplicate articles removed by `canonical_url`
+- `article_store.insert_articles` upserts on `canonical_url` (idempotent across runs)
+- `pipeline_runs` audit row written every execution (`articles_fetched`, `articles_classified`, `source_stats`)
+- **Classifier agent (`app/agents/classifier.py`) live: Gemini Flash-Lite via PydanticAI, structured output (`domains`, `relevance_score`, `is_noise`, `reason`)**
+- **Batch orchestrator `_classify_articles` in `worker/pipeline.py`: serial loop with `sleep(60 / classifier_rpm)` between calls, per-article try/except, function contract never raises**
+- **Classification columns (`domains`, `relevance`, `is_noise`) persisted alongside the article row when present; DB defaults handle failed classifications**
+- 49/49 tests green; ruff and mypy clean
+- Live smoke against Gemini + hosted Supabase passed (5 HN articles classified, rows visible)
+
+The next slice is classifier eval, not embedding. We lock in quality on the classifier before stacking another agent stage on top. See `docs/NEXT_SESSION.md`.
 
 ## Week 1: Data pipeline + backend core
 
