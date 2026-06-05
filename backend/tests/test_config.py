@@ -23,7 +23,7 @@ def test_settings_loads_typed_values_from_environment(
             "SUPABASE_URL": "https://watcher.supabase.co",
             "SUPABASE_SECRET_KEY": "sb_secret_test",
             "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_test",
-            "GOOGLE_API_KEY": "google-test-key",
+            "CLAUDE_API_KEY": "claude-test-key",
             "ENCRYPTION_KEY": "encryption-test-key",
             "HN_FETCH_LIMIT": "25",
             "RSS_FETCH_LIMIT": "40",
@@ -39,7 +39,7 @@ def test_settings_loads_typed_values_from_environment(
     assert str(settings.supabase_url) == "https://watcher.supabase.co/"
     assert settings.supabase_secret_value == "sb_secret_test"
     assert settings.supabase_publishable_key == "sb_publishable_test"
-    assert settings.google_api_key_value == "google-test-key"
+    assert settings.claude_api_key_value == "claude-test-key"
     assert settings.encryption_key_value == "encryption-test-key"
     assert settings.hn_fetch_limit == 25
     assert settings.rss_fetch_limit == 40
@@ -58,7 +58,7 @@ def test_settings_treats_blank_optional_secrets_as_missing(
             "SUPABASE_URL": "",
             "SUPABASE_SECRET_KEY": "",
             "SUPABASE_PUBLISHABLE_KEY": "",
-            "GOOGLE_API_KEY": "",
+            "CLAUDE_API_KEY": "",
             "ENCRYPTION_KEY": "",
         }
     )
@@ -66,7 +66,7 @@ def test_settings_treats_blank_optional_secrets_as_missing(
     assert settings.supabase_url is None
     assert settings.supabase_secret_value is None
     assert settings.supabase_publishable_key is None
-    assert settings.google_api_key_value is None
+    assert settings.claude_api_key_value is None
     assert settings.encryption_key_value is None
 
 
@@ -74,7 +74,7 @@ def test_settings_redacts_secret_values() -> None:
     settings = Settings.model_validate(
         {
             "supabase_secret_key": "sb_secret_test",
-            "google_api_key": "google-test-key",
+            "claude_api_key": "claude-test-key",
             "encryption_key": "encryption-test-key",
         }
     )
@@ -82,7 +82,7 @@ def test_settings_redacts_secret_values() -> None:
     settings_repr = repr(settings)
 
     assert "sb_secret_test" not in settings_repr
-    assert "google-test-key" not in settings_repr
+    assert "claude-test-key" not in settings_repr
     assert "encryption-test-key" not in settings_repr
 
 

@@ -170,7 +170,13 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     ) -> None:
         persisted_summaries.append(summary)
 
+    async def fake_fetch_existing(
+        gateway: SupabaseGateway, canonical_urls: Sequence[str]
+    ) -> set[str]:
+        return set()
+
     monkeypatch.setattr("worker.pipeline.insert_pipeline_run", fake_insert_pipeline_run)
+    monkeypatch.setattr("worker.pipeline.fetch_existing_canonical_urls", fake_fetch_existing)
 
     summary = await run_pipeline(
         [
@@ -187,6 +193,47 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     assert persisted_summaries == [summary]
     assert summary.source_stats["hn"].duplicates == 0
     assert summary.source_stats["rss"].duplicates == 1
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_skips_articles_already_in_db(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    known = _article("Known story", source="hn", canonical_url="https://example.com/known")
+    fresh = _article("Fresh story", source="hn", canonical_url="https://example.com/fresh")
+    inserted_pairs: list[tuple[ArticleInput, ClassificationOutput | None]] = []
+
+    async def fake_fetch_existing(
+        gateway: SupabaseGateway, canonical_urls: Sequence[str]
+    ) -> set[str]:
+        return {"https://example.com/known"}
+
+    async def fake_insert_articles(
+        gateway: SupabaseGateway,
+        articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+    ) -> int:
+        inserted_pairs.extend(articles)
+        return len(articles)
+
+    async def fake_insert_pipeline_run(
+        gateway: SupabaseGateway,
+        summary: PipelineRunSummary,
+    ) -> None:
+        return None
+
+    monkeypatch.setattr("worker.pipeline.fetch_existing_canonical_urls", fake_fetch_existing)
+    monkeypatch.setattr("worker.pipeline.insert_articles", fake_insert_articles)
+    monkeypatch.setattr("worker.pipeline.insert_pipeline_run", fake_insert_pipeline_run)
+
+    summary = await run_pipeline(
+        [ConnectorSpec(name="hn", connector=FakeConnector([known, fresh]), limit=10)],
+        gateway=cast(SupabaseGateway, object()),
+    )
+
+    assert summary.articles_fetched == 2
+    assert summary.articles_classified == 1
+    assert summary.articles_skipped_known == 1
+    assert [article for article, _ in inserted_pairs] == [fresh]
 
 
 @pytest.mark.asyncio

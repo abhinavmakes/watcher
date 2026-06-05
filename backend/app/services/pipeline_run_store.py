@@ -15,6 +15,7 @@ async def insert_pipeline_run(
         "status": summary_json["status"],
         "articles_fetched": summary_json["articles_fetched"],
         "articles_classified": summary_json["articles_classified"],
+        "articles_skipped_known": summary_json["articles_skipped_known"],
         "clusters_updated": summary_json["clusters_updated"],
         "clusters_created": summary_json["clusters_created"],
         "source_stats": summary_json["source_stats"],

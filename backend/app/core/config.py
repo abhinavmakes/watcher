@@ -37,8 +37,8 @@ class Settings(BaseSettings):
     supabase_secret_key: SecretStr | None = Field(default=None, repr=False)
     supabase_publishable_key: str | None = Field(default=None, repr=False)
 
-    google_api_key: SecretStr | None = Field(default=None, repr=False)
-    classifier_model: str = "google-gla:gemini-2.5-flash-lite"
+    claude_api_key: SecretStr | None = Field(default=None, repr=False)
+    classifier_model: str = "anthropic:claude-haiku-4-5-20251001"
     classifier_rpm: int = Field(default=15, ge=1)
     synthesis_model: str = "google-gla:gemini-2.5-flash"
     embedding_model: str = "text-embedding-005"
@@ -59,7 +59,7 @@ class Settings(BaseSettings):
         "supabase_url",
         "supabase_secret_key",
         "supabase_publishable_key",
-        "google_api_key",
+        "claude_api_key",
         "encryption_key",
         mode="before",
     )
@@ -92,10 +92,10 @@ class Settings(BaseSettings):
         return self.supabase_secret_key.get_secret_value()
 
     @property
-    def google_api_key_value(self) -> str | None:
-        if self.google_api_key is None:
+    def claude_api_key_value(self) -> str | None:
+        if self.claude_api_key is None:
             return None
-        return self.google_api_key.get_secret_value()
+        return self.claude_api_key.get_secret_value()
 
     @property
     def encryption_key_value(self) -> str | None:
