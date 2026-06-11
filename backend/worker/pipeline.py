@@ -12,6 +12,7 @@ from app.models.article import ArticleInput
 from app.models.classification import ClassificationOutput
 from app.models.pipeline_run import PipelineRunStatus, PipelineRunSummary, SourceFetchStats
 from app.services.article_store import fetch_existing_canonical_urls, insert_articles
+from app.services.embeddings import embed_texts, format_embedding_input
 from app.services.pipeline_run_store import insert_pipeline_run
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,22 @@ async def _classify_articles(
     return results
 
 
+async def _embed_articles(
+    classified: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+) -> dict[str, list[float]]:
+    selected = [
+        article
+        for article, classification in classified
+        if classification is not None and not classification.is_noise
+    ]
+    texts = [format_embedding_input(article) for article in selected]
+    vectors = await embed_texts(texts)
+    return {
+        article.canonical_url: vector
+        for article, vector in zip(selected, vectors, strict=True)
+    }
+
+
 async def run_pipeline(
     connector_specs: Sequence[ConnectorSpec],
     gateway: SupabaseGateway | None = None,
@@ -130,9 +147,11 @@ async def run_pipeline(
         for result in results
     }
     if gateway is not None:
+        embeddings_by_url = await _embed_articles(classified_articles)
         await insert_articles(
             gateway=gateway,
             articles=classified_articles,
+            embeddings=embeddings_by_url,
         )
 
     summary = PipelineRunSummary(

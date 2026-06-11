@@ -13,7 +13,8 @@ from worker.pipeline import ConnectorSpec, _deduplicate_fetched_articles, run_pi
 
 @pytest.fixture(autouse=True)
 def _stub_classifier(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Patch classify_article and the rate-limit sleep so pipeline tests stay hermetic and fast."""
+    """Patch classify_article, the rate-limit sleep, and embed_texts so pipeline tests stay
+    hermetic and fast."""
 
     async def fake_classify_article(article: ArticleInput) -> ClassificationOutput:
         return ClassificationOutput(
@@ -26,8 +27,12 @@ def _stub_classifier(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_sleep(seconds: float) -> None:
         return None
 
+    async def fake_embed_texts(texts: list[str]) -> list[list[float]]:
+        return [[0.0] * 8 for _ in texts]
+
     monkeypatch.setattr("worker.pipeline.classify_article", fake_classify_article)
     monkeypatch.setattr("worker.pipeline.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("worker.pipeline.embed_texts", fake_embed_texts)
 
 
 class FakeConnector:
@@ -158,6 +163,7 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     async def fake_insert_articles(
         gateway: SupabaseGateway,
         articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+        embeddings: dict[str, list[float]] | None = None,
     ) -> int:
         inserted_pairs.extend(articles)
         return len(articles)
@@ -211,6 +217,7 @@ async def test_run_pipeline_skips_articles_already_in_db(
     async def fake_insert_articles(
         gateway: SupabaseGateway,
         articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+        embeddings: dict[str, list[float]] | None = None,
     ) -> int:
         inserted_pairs.extend(articles)
         return len(articles)

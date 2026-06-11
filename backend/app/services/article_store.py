@@ -22,10 +22,13 @@ async def fetch_existing_canonical_urls(
 
 
 async def insert_articles(
-    gateway: SupabaseGateway, articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]]
+    gateway: SupabaseGateway,
+    articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+    embeddings: dict[str, list[float]] | None = None,
 ) -> int:
     if not articles:
         return 0
+    embeddings = embeddings or {}
     rows = []
 
     for article, classification in articles:
@@ -44,6 +47,9 @@ async def insert_articles(
             row["relevance"] = classification_json["relevance_score"]
             row["domains"] = classification_json["domains"]
             row["is_noise"] = classification_json["is_noise"]
+        embedding = embeddings.get(article.canonical_url)
+        if embedding is not None:
+            row["embedding"] = embedding
         rows.append(row)
 
     await (
