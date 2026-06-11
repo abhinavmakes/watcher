@@ -1,0 +1,86 @@
+[
+  {
+    "_pattern": "CLEAR SIGNAL — concrete release with benchmarks + breaking changes",
+    "article": {
+      "source": "rss",
+      "title": "Pydantic v3 released: 5x validation speedup via Rust core rewrite",
+      "url": "https://example.com/pydantic-v3",
+      "canonical_url": "example.com/pydantic-v3",
+      "content": "Replaces validation internals with a Rust engine. 5x faster on nested models. Breaking changes to model_validator. Migration guide included."
+    },
+    "expected_is_noise": false,
+    "expected_domains": ["libraries"],
+    "relevance_band": "high",
+    "note": "Real release, measurable benchmark, breaking changes that affect teams. List the domains that genuinely apply (1-3): libraries, python, open_source all fit."
+  },
+  {
+    "_pattern": "CLEAR NOISE — engagement-bait thought leadership, no substance",
+    "article": {
+      "source": "hn",
+      "title": "Why every developer needs to embrace AI or get left behind",
+      "url": "https://example.com/embrace-ai",
+      "canonical_url": "example.com/embrace-ai",
+      "content": "The world is changing fast. Here are five mindset shifts you need today."
+    },
+    "expected_is_noise": true,
+    "expected_domains": [],
+    "relevance_band": "low",
+    "note": "Your one-glance-adds-value test fails. No tool, technique, data, or change. domain is null when noise."
+  },
+  {
+    "_pattern": "SIGNAL — agent framework release",
+    "article": {
+      "source": "rss",
+      "title": "PydanticAI adds durable agent execution and resumable workflows",
+      "url": "https://example.com/pydanticai-durable",
+      "canonical_url": "example.com/pydanticai-durable",
+      "content": "Adds persisted runs, resumable tool calls, and retry controls for long-running agents."
+    },
+    "expected_is_noise": false,
+    "expected_domains": ["ai_agents"],
+    "relevance_band": "high",
+    "note": "Concrete capability change for agent builders."
+  },
+  {
+    "_pattern": "BORDERLINE — funding with thin technical detail (kept as signal, low band)",
+    "article": {
+      "source": "rss",
+      "title": "Acme raises $12M Series A for AI-powered sales automation",
+      "url": "https://example.com/acme-series-a",
+      "canonical_url": "example.com/acme-series-a",
+      "content": "Acme announced a Series A led by Sequoia. CEO is ex-Google."
+    },
+    "expected_is_noise": false,
+    "expected_domains": ["funding"],
+    "relevance_band": "low",
+    "note": "Close call. Funding with SOME context = weak signal, not noise. If it were pure 'company X exists, raised money, no detail' I'd flag noise. This is the kind of edge to write a note on."
+  },
+  {
+    "_pattern": "CLEAR NOISE — job posting",
+    "article": {
+      "source": "rss",
+      "title": "We're hiring a Senior ML Engineer",
+      "url": "https://example.com/hiring",
+      "canonical_url": "example.com/hiring",
+      "content": "Join our growing team. Competitive salary, remote-first, great culture."
+    },
+    "expected_is_noise": true,
+    "expected_domains": [],
+    "relevance_band": "low",
+    "note": "Hiring post, no technical substance about the system or stack."
+  },
+  {
+    "_pattern": "BORDERLINE — trend roundup (signal ONLY if it cites concrete data)",
+    "article": {
+      "source": "rss",
+      "title": "The State of AI Engineering 2026: five trends",
+      "url": "https://example.com/state-of-ai-2026",
+      "canonical_url": "example.com/state-of-ai-2026",
+      "content": "Survey of 1,200 teams: 68% now run evals in CI, RAG adoption down 12% as context windows grow, agent frameworks consolidating around three players."
+    },
+    "expected_is_noise": false,
+    "expected_domains": ["ai_agents"],
+    "relevance_band": "mid",
+    "note": "Kept as signal because it cites concrete numbers a practitioner would act on. If it were vague vibes ('AI is transforming everything') with no data, it's noise. The data is the dividing line."
+  }
+]

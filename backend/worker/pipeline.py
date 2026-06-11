@@ -11,7 +11,8 @@ from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput
 from app.models.classification import ClassificationOutput
 from app.models.pipeline_run import PipelineRunStatus, PipelineRunSummary, SourceFetchStats
-from app.services.article_store import insert_articles
+from app.services.article_store import fetch_existing_canonical_urls, insert_articles
+from app.services.embeddings import embed_texts, format_embedding_input
 from app.services.pipeline_run_store import insert_pipeline_run
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,22 @@ async def _classify_articles(
     return results
 
 
+async def _embed_articles(
+    classified: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+) -> dict[str, list[float]]:
+    selected = [
+        article
+        for article, classification in classified
+        if classification is not None and not classification.is_noise
+    ]
+    texts = [format_embedding_input(article) for article in selected]
+    vectors = await embed_texts(texts)
+    return {
+        article.canonical_url: vector
+        for article, vector in zip(selected, vectors, strict=True)
+    }
+
+
 async def run_pipeline(
     connector_specs: Sequence[ConnectorSpec],
     gateway: SupabaseGateway | None = None,
@@ -103,7 +120,24 @@ async def run_pipeline(
     results = await asyncio.gather(*(_fetch_from_connector(spec) for spec in connector_specs))
     all_articles = [article for result in results for article in result.articles]
     dedup_result = _deduplicate_fetched_articles(all_articles)
-    classified_articles = await _classify_articles(dedup_result.articles)
+
+    # Classify only articles we have not seen before. Re-classifying already-persisted
+    # articles is the dominant recurring LLM cost, so filter against the DB first.
+    to_classify = dedup_result.articles
+    articles_skipped_known = 0
+    if gateway is not None:
+        existing = await fetch_existing_canonical_urls(
+            gateway, [article.canonical_url for article in to_classify]
+        )
+        if existing:
+            to_classify = [a for a in to_classify if a.canonical_url not in existing]
+            articles_skipped_known = len(dedup_result.articles) - len(to_classify)
+            logger.info(
+                "pipeline_skipped_known_articles",
+                extra={"known": articles_skipped_known, "to_classify": len(to_classify)},
+            )
+
+    classified_articles = await _classify_articles(to_classify)
     source_stats = {
         result.source: SourceFetchStats(
             returned=len(result.articles),
@@ -113,9 +147,11 @@ async def run_pipeline(
         for result in results
     }
     if gateway is not None:
+        embeddings_by_url = await _embed_articles(classified_articles)
         await insert_articles(
             gateway=gateway,
             articles=classified_articles,
+            embeddings=embeddings_by_url,
         )
 
     summary = PipelineRunSummary(
@@ -124,6 +160,7 @@ async def run_pipeline(
         status=PipelineRunStatus.COMPLETED,
         articles_fetched=len(all_articles),
         articles_classified=sum(1 for _, c in classified_articles if c is not None),
+        articles_skipped_known=articles_skipped_known,
         source_stats=source_stats,
     )
 

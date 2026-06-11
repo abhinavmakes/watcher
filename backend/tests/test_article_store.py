@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
@@ -6,7 +7,7 @@ import pytest
 from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput
 from app.models.classification import ArticleDomain, ClassificationOutput
-from app.services.article_store import insert_articles
+from app.services.article_store import fetch_existing_canonical_urls, insert_articles
 
 
 class FakeInsertQuery:
@@ -135,6 +136,64 @@ async def test_insert_articles_omits_classification_keys_when_classification_is_
     assert "domains" not in row
     assert "relevance" not in row
     assert "is_noise" not in row
+
+
+class FakeSelectQuery:
+    def __init__(self, rows: list[dict[str, Any]]) -> None:
+        self._rows = rows
+        self.selected: str | None = None
+        self.in_column: str | None = None
+        self.in_values: list[str] | None = None
+
+    def select(self, columns: str) -> "FakeSelectQuery":
+        self.selected = columns
+        return self
+
+    def in_(self, column: str, values: list[str]) -> "FakeSelectQuery":
+        self.in_column = column
+        self.in_values = values
+        return self
+
+    async def execute(self) -> SimpleNamespace:
+        return SimpleNamespace(data=self._rows)
+
+
+class FakeSelectGateway:
+    def __init__(self, rows: list[dict[str, Any]]) -> None:
+        self.query = FakeSelectQuery(rows)
+        self.table_calls: list[str] = []
+
+    def table(self, table_name: str) -> FakeSelectQuery:
+        self.table_calls.append(table_name)
+        return self.query
+
+
+@pytest.mark.asyncio
+async def test_fetch_existing_canonical_urls_returns_persisted_subset() -> None:
+    gateway = FakeSelectGateway([{"canonical_url": "https://example.com/known"}])
+
+    existing = await fetch_existing_canonical_urls(
+        cast(SupabaseGateway, gateway),
+        ["https://example.com/known", "https://example.com/fresh"],
+    )
+
+    assert existing == {"https://example.com/known"}
+    assert gateway.table_calls == ["articles"]
+    assert gateway.query.in_column == "canonical_url"
+    assert gateway.query.in_values == [
+        "https://example.com/known",
+        "https://example.com/fresh",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_existing_canonical_urls_skips_db_for_empty_input() -> None:
+    gateway = FakeSelectGateway([])
+
+    existing = await fetch_existing_canonical_urls(cast(SupabaseGateway, gateway), [])
+
+    assert existing == set()
+    assert gateway.table_calls == []
 
 
 @pytest.mark.asyncio

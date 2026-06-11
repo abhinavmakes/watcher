@@ -13,7 +13,8 @@ from worker.pipeline import ConnectorSpec, _deduplicate_fetched_articles, run_pi
 
 @pytest.fixture(autouse=True)
 def _stub_classifier(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Patch classify_article and the rate-limit sleep so pipeline tests stay hermetic and fast."""
+    """Patch classify_article, the rate-limit sleep, and embed_texts so pipeline tests stay
+    hermetic and fast."""
 
     async def fake_classify_article(article: ArticleInput) -> ClassificationOutput:
         return ClassificationOutput(
@@ -26,8 +27,12 @@ def _stub_classifier(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_sleep(seconds: float) -> None:
         return None
 
+    async def fake_embed_texts(texts: list[str]) -> list[list[float]]:
+        return [[0.0] * 8 for _ in texts]
+
     monkeypatch.setattr("worker.pipeline.classify_article", fake_classify_article)
     monkeypatch.setattr("worker.pipeline.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("worker.pipeline.embed_texts", fake_embed_texts)
 
 
 class FakeConnector:
@@ -158,6 +163,7 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     async def fake_insert_articles(
         gateway: SupabaseGateway,
         articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+        embeddings: dict[str, list[float]] | None = None,
     ) -> int:
         inserted_pairs.extend(articles)
         return len(articles)
@@ -170,7 +176,13 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     ) -> None:
         persisted_summaries.append(summary)
 
+    async def fake_fetch_existing(
+        gateway: SupabaseGateway, canonical_urls: Sequence[str]
+    ) -> set[str]:
+        return set()
+
     monkeypatch.setattr("worker.pipeline.insert_pipeline_run", fake_insert_pipeline_run)
+    monkeypatch.setattr("worker.pipeline.fetch_existing_canonical_urls", fake_fetch_existing)
 
     summary = await run_pipeline(
         [
@@ -187,6 +199,48 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     assert persisted_summaries == [summary]
     assert summary.source_stats["hn"].duplicates == 0
     assert summary.source_stats["rss"].duplicates == 1
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_skips_articles_already_in_db(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    known = _article("Known story", source="hn", canonical_url="https://example.com/known")
+    fresh = _article("Fresh story", source="hn", canonical_url="https://example.com/fresh")
+    inserted_pairs: list[tuple[ArticleInput, ClassificationOutput | None]] = []
+
+    async def fake_fetch_existing(
+        gateway: SupabaseGateway, canonical_urls: Sequence[str]
+    ) -> set[str]:
+        return {"https://example.com/known"}
+
+    async def fake_insert_articles(
+        gateway: SupabaseGateway,
+        articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+        embeddings: dict[str, list[float]] | None = None,
+    ) -> int:
+        inserted_pairs.extend(articles)
+        return len(articles)
+
+    async def fake_insert_pipeline_run(
+        gateway: SupabaseGateway,
+        summary: PipelineRunSummary,
+    ) -> None:
+        return None
+
+    monkeypatch.setattr("worker.pipeline.fetch_existing_canonical_urls", fake_fetch_existing)
+    monkeypatch.setattr("worker.pipeline.insert_articles", fake_insert_articles)
+    monkeypatch.setattr("worker.pipeline.insert_pipeline_run", fake_insert_pipeline_run)
+
+    summary = await run_pipeline(
+        [ConnectorSpec(name="hn", connector=FakeConnector([known, fresh]), limit=10)],
+        gateway=cast(SupabaseGateway, object()),
+    )
+
+    assert summary.articles_fetched == 2
+    assert summary.articles_classified == 1
+    assert summary.articles_skipped_known == 1
+    assert [article for article, _ in inserted_pairs] == [fresh]
 
 
 @pytest.mark.asyncio

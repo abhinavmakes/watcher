@@ -2,8 +2,8 @@ import json
 from typing import Any
 
 from pydantic_ai import Agent
-from pydantic_ai.models.google import GoogleModel
-from pydantic_ai.providers.google import GoogleProvider
+from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.providers.anthropic import AnthropicProvider
 
 from app.core.config import settings
 from app.models.article import ArticleInput
@@ -58,6 +58,17 @@ CLASSIFIER_DOMAIN_GUIDE: dict[ArticleDomain, str] = {
     ArticleDomain.PYTHON: (
         "Python language, CPython, PyPI, packaging, Python frameworks, Python "
         "runtime/tooling changes"
+    ),
+    ArticleDomain.SYSTEMS: (
+        "operating systems, networking protocols, embedded systems, distributed-systems "
+        "concepts, systems design, algorithms, and low-level or deep-tech explainers"
+    ),
+    ArticleDomain.HARDWARE: (
+        "chips, GPUs, silicon, consumer devices, and hardware product launches"
+    ),
+    ArticleDomain.BUSINESS: (
+        "company strategy, market and industry analysis, operator and management "
+        "dynamics, and tech business commentary not tied to a funding event"
     ),
 }
 
@@ -130,6 +141,8 @@ Evaluate from the perspective of a senior engineer or technical founder asking:
 - no actionable technical or product signal
 - generic thought leadership, engagement bait, vague futurism
 - pure hiring/job posts, lifestyle, politics, personal updates
+- tech nostalgia, history, retro/demoscene trivia, standalone jokes or opinion
+  quotes without a concrete technical or product takeaway
 - low-information marketing, SEO content, spam, or unparseable text
 </scoring_criteria>
 
@@ -140,6 +153,11 @@ Evaluate from the perspective of a senior engineer or technical founder asking:
 - If is_noise=true, relevance_score must be <= 0.34.
 - Prefer lower score when uncertain between adjacent bands.
 - Assign domains by primary substance, not tangential mention.
+- Disambiguate overlapping domains: funding = financial events (rounds, IPOs,
+  acquisitions); business = company strategy or market analysis without a funding
+  event; startups = launches/founders/product-market signals. infra = operational
+  cloud/deployment/databases; systems = OS, networking, algorithms, or deep-tech
+  concepts; hardware = chips, GPUs, or consumer devices.
 - Press releases are not automatically noise; keep them only if they contain
   concrete product, funding, security, open-source, infrastructure, model, or
   research information.
@@ -266,18 +284,18 @@ reason: "Job posting with no technical content about the system, stack, or resea
 """
 
 
-def _google_model_name_from_setting(model_name: str) -> str:
-    return model_name.removeprefix("google-gla:").removeprefix("google:")
+def _model_name_from_setting(model_name: str) -> str:
+    return model_name.removeprefix("anthropic:")
 
 
-def build_classifier_model() -> GoogleModel:
-    api_key = settings.google_api_key_value
+def build_classifier_model() -> AnthropicModel:
+    api_key = settings.claude_api_key_value
     if api_key is None:
-        raise ClassifierConfigError("GOOGLE_API_KEY is required for the classifier agent")
+        raise ClassifierConfigError("CLAUDE_API_KEY is required for the classifier agent")
 
-    provider = GoogleProvider(api_key=api_key)
-    return GoogleModel(
-        _google_model_name_from_setting(settings.classifier_model),
+    provider = AnthropicProvider(api_key=api_key)
+    return AnthropicModel(
+        _model_name_from_setting(settings.classifier_model),
         provider=provider,
     )
 

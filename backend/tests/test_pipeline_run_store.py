@@ -45,6 +45,7 @@ async def test_insert_pipeline_run_maps_summary_to_pipeline_runs_table_row() -> 
         status=PipelineRunStatus.COMPLETED,
         articles_fetched=12,
         articles_classified=0,
+        articles_skipped_known=5,
         clusters_updated=0,
         clusters_created=0,
         source_stats={
@@ -64,6 +65,7 @@ async def test_insert_pipeline_run_maps_summary_to_pipeline_runs_table_row() -> 
         "status": "completed",
         "articles_fetched": 12,
         "articles_classified": 0,
+        "articles_skipped_known": 5,
         "clusters_updated": 0,
         "clusters_created": 0,
         "source_stats": {

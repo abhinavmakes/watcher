@@ -5,11 +5,30 @@ from app.models.article import ArticleInput
 from app.models.classification import ClassificationOutput
 
 
+async def fetch_existing_canonical_urls(
+    gateway: SupabaseGateway, canonical_urls: Sequence[str]
+) -> set[str]:
+    """Return which of ``canonical_urls`` are already persisted, so the pipeline can
+    classify only unseen articles and avoid re-paying the per-article LLM cost."""
+    if not canonical_urls:
+        return set()
+    result = await (
+        gateway.table("articles")
+        .select("canonical_url")
+        .in_("canonical_url", list(canonical_urls))
+        .execute()
+    )
+    return {row["canonical_url"] for row in result.data}
+
+
 async def insert_articles(
-    gateway: SupabaseGateway, articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]]
+    gateway: SupabaseGateway,
+    articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+    embeddings: dict[str, list[float]] | None = None,
 ) -> int:
     if not articles:
         return 0
+    embeddings = embeddings or {}
     rows = []
 
     for article, classification in articles:
@@ -28,6 +47,9 @@ async def insert_articles(
             row["relevance"] = classification_json["relevance_score"]
             row["domains"] = classification_json["domains"]
             row["is_noise"] = classification_json["is_noise"]
+        embedding = embeddings.get(article.canonical_url)
+        if embedding is not None:
+            row["embedding"] = embedding
         rows.append(row)
 
     await (

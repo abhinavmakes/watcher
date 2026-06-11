@@ -15,6 +15,9 @@ class ArticleDomain(StrEnum):
     RESEARCH = "research"
     SECURITY = "security"
     PYTHON = "python"
+    SYSTEMS = "systems"
+    HARDWARE = "hardware"
+    BUSINESS = "business"
 
 
 class ClassificationOutput(BaseModel):

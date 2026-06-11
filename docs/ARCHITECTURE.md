@@ -104,7 +104,7 @@ Both deploy from the same monorepo on Railway. Railway supports multiple service
    rows on `canonical_url`. The worker/service entrypoint owns client creation;
    storage functions only map and execute database operations.
 
-4. CLASSIFY (PydanticAI agent, Gemini Flash-Lite)
+4. CLASSIFY (PydanticAI agent, Claude Haiku 4.5)
    Input: ArticleInput
    Output: ClassifiedArticle {
      domains: list[str],       # e.g. ["ai_agents", "python", "open_source"]
@@ -533,7 +533,7 @@ class ClassificationOutput(BaseModel):
     reason: str               # one-sentence local eval/debug reason
 
 classifier = Agent(
-    model="google-gla:gemini-2.5-flash-lite",
+    model="anthropic:claude-haiku-4-5-20251001",
     result_type=ClassificationOutput,
     system_prompt="""Classify this tech article into domains.
     Available domains: ai_agents, llms, open_source, funding,
@@ -583,7 +583,8 @@ SUPABASE_SERVICE_KEY=         # server-side, full access
 SUPABASE_ANON_KEY=            # client-side, RLS enforced
 
 # LLMs (for pipeline, not BYOK)
-GOOGLE_API_KEY=               # Gemini Flash-Lite + Flash + embeddings
+CLAUDE_API_KEY=               # Claude Haiku 4.5 (classification)
+GOOGLE_API_KEY=               # Gemini Flash synthesis + embeddings (planned)
 
 # Security
 ENCRYPTION_KEY=               # AES-256 key for BYOK key encryption

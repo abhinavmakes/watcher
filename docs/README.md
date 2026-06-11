@@ -61,7 +61,7 @@ The product's opinion: you don't need to read 50 articles. You need to see 8 clu
 **Backend:** Python, FastAPI, PydanticAI, LiteLLM
 **Frontend:** Next.js (App Router), Tailwind CSS, Framer Motion
 **Database:** Supabase (Postgres + pgvector + Auth)
-**LLMs:** Gemini 2.5 Flash-Lite (classification, free tier), Gemini 2.5 Flash (synthesis)
+**LLMs:** Claude Haiku 4.5 (classification), Gemini 2.5 Flash (synthesis, planned)
 **Embeddings:** Google text-embedding-005
 **Hosting:** Railway (API + worker), Vercel (frontend)
 **Cost:** ~$5/month on Google free tier
@@ -103,7 +103,7 @@ cd watcher
 
 # Backend
 cd backend
-cp .env.example .env  # Add your Supabase + Gemini keys
+cp .env.example .env  # Add your Supabase + Claude keys
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
