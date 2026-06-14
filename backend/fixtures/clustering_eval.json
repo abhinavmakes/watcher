@@ -1,0 +1,223 @@
+[
+  {
+    "label": "same",
+    "a": {
+      "source": "rss",
+      "title": "AI coding agents find the right file but miss the exact lines that matter, study shows - the-decoder.com",
+      "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPMWo2SmpUS0dtTlhWQi1uaG15QXk2S3BBQ0NzMUxHWndHaGFDT3k0UkpncFhPbDlHeEhUWlJRdVJMMHJLX0J4RUkzQjA0bE5UeV84YVFuS0k0SnRPMUp4X2ZGeU1IUUprYkExbE9WdnVpcWhreWZTZjRwNlR3cTJNVHZERGJqSVQyVGpWb1JWb21hbXVNMVNrUkhCVXBpMG42WHgzWHkzYTJ3ZlFoNERB?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPMWo2SmpUS0dtTlhWQi1uaG15QXk2S3BBQ0NzMUxHWndHaGFDT3k0UkpncFhPbDlHeEhUWlJRdVJMMHJLX0J4RUkzQjA0bE5UeV84YVFuS0k0SnRPMUp4X2ZGeU1IUUprYkExbE9WdnVpcWhreWZTZjRwNlR3cTJNVHZERGJqSVQyVGpWb1JWb21hbXVNMVNrUkhCVXBpMG42WHgzWHkzYTJ3ZlFoNERB?oc=5",
+      "content": "AI coding agents find the right file but miss the exact lines that matter, study shows the-decoder.com"
+    },
+    "b": {
+      "source": "rss",
+      "title": "AI coding agents find the right file but miss the exact lines that matter, study shows",
+      "url": "https://the-decoder.com/ai-coding-agents-find-the-right-file-but-miss-the-exact-lines-that-matter-study-shows",
+      "canonical_url": "https://the-decoder.com/ai-coding-agents-find-the-right-file-but-miss-the-exact-lines-that-matter-study-shows",
+      "content": "AI coding agents like Claude Code or Codex reliably find the right file but miss most of the critical lines within it. The new SWE-Explore benchmark is the first to test code search separately from the actual repair, and it shows that without enough context, even the best fix will fail. The article AI coding agents find the right file but miss the exact lines that matter, study shows appeared first on The Decoder ."
+    }
+  },
+  {
+    "label": "same",
+    "a": {
+      "source": "rss",
+      "title": "Anthropic blocks all public access to Claude Fable 5, Mythos 5 following US government order \u2014 what enterprises should do - VentureBeat",
+      "url": "https://news.google.com/rss/articles/CBMi6AFBVV95cUxNX2MxcmpFWC0wcWlaVl85Wlg3aTVOT190MGFNSDRYTlZYWURjUU5KMGZhd2V4YU4wempIVU5GUEFNNklQSXk0a3lBU2ZycHh2a3dVUEN3N0w4QndlbGx6RV94U0xGS3hEQXU0TC1PY0otTVl0TmNQeGFaVGxrTXZQOW5DYjB6czJvWHhDb0ZUUVNhQVhncGRfNWxMQ1pqZjFSWlltR0Z5WTZONjVTRnRpVU41VXNCTHJFX0NHUm94bnlFVWVWeDFQT2RlRFprbzlvUmltSjRKQS1tc25JbnlELUVhOVliU0dP?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMi6AFBVV95cUxNX2MxcmpFWC0wcWlaVl85Wlg3aTVOT190MGFNSDRYTlZYWURjUU5KMGZhd2V4YU4wempIVU5GUEFNNklQSXk0a3lBU2ZycHh2a3dVUEN3N0w4QndlbGx6RV94U0xGS3hEQXU0TC1PY0otTVl0TmNQeGFaVGxrTXZQOW5DYjB6czJvWHhDb0ZUUVNhQVhncGRfNWxMQ1pqZjFSWlltR0Z5WTZONjVTRnRpVU41VXNCTHJFX0NHUm94bnlFVWVWeDFQT2RlRFprbzlvUmltSjRKQS1tc25JbnlELUVhOVliU0dP?oc=5",
+      "content": "Anthropic blocks all public access to Claude Fable 5, Mythos 5 following US government order \u2014 what enterprises should do VentureBeat"
+    },
+    "b": {
+      "source": "rss",
+      "title": "Anthropic cuts off Fable 5 and Mythos 5 access following government order",
+      "url": "https://theverge.com/ai-artificial-intelligence/949553/anthropic-fable-5-mythos-5-government-national-security",
+      "canonical_url": "https://theverge.com/ai-artificial-intelligence/949553/anthropic-fable-5-mythos-5-government-national-security",
+      "content": "On Friday evening, the government ordered Anthropic to block access to Fable 5 and Mythos 5 for all foreign nations, both inside and outside the US, due to national security concerns. That order included employees of Anthropic. To meet those demands, the company has completely cut off access to the models for all customers. In [\u2026]"
+    }
+  },
+  {
+    "label": "same",
+    "a": {
+      "source": "rss",
+      "title": "Anthropic cuts off Fable 5 and Mythos 5 access following government order",
+      "url": "https://theverge.com/ai-artificial-intelligence/949553/anthropic-fable-5-mythos-5-government-national-security",
+      "canonical_url": "https://theverge.com/ai-artificial-intelligence/949553/anthropic-fable-5-mythos-5-government-national-security",
+      "content": "On Friday evening, the government ordered Anthropic to block access to Fable 5 and Mythos 5 for all foreign nations, both inside and outside the US, due to national security concerns. That order included employees of Anthropic. To meet those demands, the company has completely cut off access to the models for all customers. In [\u2026]"
+    },
+    "b": {
+      "source": "rss",
+      "title": "US government forces Anthropic to disable Claude Fable 5 and Mythos 5 for all customers worldwide",
+      "url": "https://the-decoder.com/us-government-forces-anthropic-to-disable-claude-fable-5-and-mythos-5-for-all-customers-worldwide",
+      "canonical_url": "https://the-decoder.com/us-government-forces-anthropic-to-disable-claude-fable-5-and-mythos-5-for-all-customers-worldwide",
+      "content": "The US government has ordered Anthropic to shut down global access to Fable 5 and Mythos 5, citing alleged jailbreak risks. Anthropic is complying but pushing back publicly: the vulnerabilities are minor and exist in competing models like GPT-5.5, the company says, an ironic turn after the company spent months hyping the cybersecurity risks of its own Mythos class. Anthropic warns the move could set a precedent that halts all frontier deployments. The article US government forces Anthropic to disable Claude Fable 5 and Mythos 5 for all customers worldwide appeared first on The Decoder ."
+    }
+  },
+  {
+    "label": "same",
+    "a": {
+      "source": "rss",
+      "title": "Amazon security research reportedly led to the White House\u2019s Anthropic Fable ban - The Verge",
+      "url": "https://news.google.com/rss/articles/CBMipAFBVV95cUxNRzA4SFMyal9QUWlFc3BHak93MzY0d0trVVRTV1V6eVZOM3k5Tkg5X1FsY2pUQmZHR3FjVUVXSzQ2SmFabWpwbUlRejIyZW9sQXBEU1NEWW1sQlktdHRxN3k2SXNEc2xZNmpMMVFWdXJoMUpTLWh2XzJ2ZzlWQnBNTC13dUM3Q0RaR3lSR3V2bm5xcTJtRnR4cmQ5V25wZlpQZVBveg?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMipAFBVV95cUxNRzA4SFMyal9QUWlFc3BHak93MzY0d0trVVRTV1V6eVZOM3k5Tkg5X1FsY2pUQmZHR3FjVUVXSzQ2SmFabWpwbUlRejIyZW9sQXBEU1NEWW1sQlktdHRxN3k2SXNEc2xZNmpMMVFWdXJoMUpTLWh2XzJ2ZzlWQnBNTC13dUM3Q0RaR3lSR3V2bm5xcTJtRnR4cmQ5V25wZlpQZVBveg?oc=5",
+      "content": "Amazon security research reportedly led to the White House\u2019s Anthropic Fable ban The Verge"
+    },
+    "b": {
+      "source": "rss",
+      "title": "Amazon security research reportedly led to the White House\u2019s Anthropic Fable ban",
+      "url": "https://theverge.com/ai-artificial-intelligence/949601/amazon-anthropic-fablemythos-government-ban",
+      "canonical_url": "https://theverge.com/ai-artificial-intelligence/949601/amazon-anthropic-fablemythos-government-ban",
+      "content": "According to the Wall Street Journal, the export control directive that led to Anthropic cutting off access to Fable 5 and Mythos 5 was triggered in part by cybersecurity research from Amazon and conversations between CEO Andy Jassy and the White House. According to the report, the paper from Amazon claims that, through a series [\u2026]"
+    }
+  },
+  {
+    "label": "same",
+    "a": {
+      "source": "rss",
+      "title": "Amazon security research reportedly led to the White House\u2019s Anthropic Fable ban",
+      "url": "https://theverge.com/ai-artificial-intelligence/949601/amazon-anthropic-fablemythos-government-ban",
+      "canonical_url": "https://theverge.com/ai-artificial-intelligence/949601/amazon-anthropic-fablemythos-government-ban",
+      "content": "According to the Wall Street Journal, the export control directive that led to Anthropic cutting off access to Fable 5 and Mythos 5 was triggered in part by cybersecurity research from Amazon and conversations between CEO Andy Jassy and the White House. According to the report, the paper from Amazon claims that, through a series [\u2026]"
+    },
+    "b": {
+      "source": "rss",
+      "title": "Amazon and five other companies reportedly triggered the government crackdown on Anthropic's Fable model",
+      "url": "https://the-decoder.com/amazon-and-five-other-companies-reportedly-triggered-the-government-crackdown-on-anthropics-fable-model",
+      "canonical_url": "https://the-decoder.com/amazon-and-five-other-companies-reportedly-triggered-the-government-crackdown-on-anthropics-fable-model",
+      "content": "Amazon CEO Andy Jassy and executives from other tech companies reportedly warned the Trump administration about security vulnerabilities in Anthropic's Fable model, even though Amazon is one of Anthropic's largest investors. Within hours, the White House forced the model offline through an export control order. The move may well be a legitimate security policy decision, but it also reads as a show of force against an inconvenient company. The article Amazon and five other companies reportedly triggered the government crackdown on Anthropic's Fable model appeared first on The Decoder ."
+    }
+  },
+  {
+    "label": "same",
+    "a": {
+      "source": "rss",
+      "title": "Anthropic cuts off Fable 5 and Mythos 5 access following government order",
+      "url": "https://theverge.com/ai-artificial-intelligence/949553/anthropic-fable-5-mythos-5-government-national-security",
+      "canonical_url": "https://theverge.com/ai-artificial-intelligence/949553/anthropic-fable-5-mythos-5-government-national-security",
+      "content": "On Friday evening, the government ordered Anthropic to block access to Fable 5 and Mythos 5 for all foreign nations, both inside and outside the US, due to national security concerns. That order included employees of Anthropic. To meet those demands, the company has completely cut off access to the models for all customers. In [\u2026]"
+    },
+    "b": {
+      "source": "rss",
+      "title": "Amazon security research reportedly led to the White House\u2019s Anthropic Fable ban",
+      "url": "https://theverge.com/ai-artificial-intelligence/949601/amazon-anthropic-fablemythos-government-ban",
+      "canonical_url": "https://theverge.com/ai-artificial-intelligence/949601/amazon-anthropic-fablemythos-government-ban",
+      "content": "According to the Wall Street Journal, the export control directive that led to Anthropic cutting off access to Fable 5 and Mythos 5 was triggered in part by cybersecurity research from Amazon and conversations between CEO Andy Jassy and the White House. According to the report, the paper from Amazon claims that, through a series [\u2026]"
+    }
+  },
+  {
+    "label": "same",
+    "a": {
+      "source": "rss",
+      "title": "Anthropic cuts off Fable 5 and Mythos 5 access following government order",
+      "url": "https://theverge.com/ai-artificial-intelligence/949553/anthropic-fable-5-mythos-5-government-national-security",
+      "canonical_url": "https://theverge.com/ai-artificial-intelligence/949553/anthropic-fable-5-mythos-5-government-national-security",
+      "content": "On Friday evening, the government ordered Anthropic to block access to Fable 5 and Mythos 5 for all foreign nations, both inside and outside the US, due to national security concerns. That order included employees of Anthropic. To meet those demands, the company has completely cut off access to the models for all customers. In [\u2026]"
+    },
+    "b": {
+      "source": "rss",
+      "title": "Days After Reports of Allowing India, US Govt Asks Anthropic to Suspend Foreign Access to New Models - TheWire.in",
+      "url": "https://news.google.com/rss/articles/CBMijgFBVV95cUxOTFNlSy10OXJBcTJ5d3hDQllzODlmRmp6TERZNXZuSV9aYWZRLUF1U25ad0syS0l0czVOdENmWG9EUEs3SlVBNHZTRmR5ZE02WmUtajk3dnFqVUljREpoaTB1WU93ZHFHU1dsQnlVSDNNVXI3NG9vc1QyaTVoSXhWSWFwT0JrNTdvVWNQc1RB0gGOAUFVX3lxTE5MU2VLLXQ5ckFxMnl3eENCWXM4OWZGanpMRFk1dm5JX1phZlEtQXVTblp3SzJLSXRzNU50Q2ZYb0RQSzdKVUE0dlNGZHlkTTZaZS1qOTd2cWpVSWNESmhpMHVZT3dkcUdTV2xCeVVIM01Vcjc0b29zVDJpNWhJeFZJYXBPQms1N29VY1BzVEE?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMijgFBVV95cUxOTFNlSy10OXJBcTJ5d3hDQllzODlmRmp6TERZNXZuSV9aYWZRLUF1U25ad0syS0l0czVOdENmWG9EUEs3SlVBNHZTRmR5ZE02WmUtajk3dnFqVUljREpoaTB1WU93ZHFHU1dsQnlVSDNNVXI3NG9vc1QyaTVoSXhWSWFwT0JrNTdvVWNQc1RB0gGOAUFVX3lxTE5MU2VLLXQ5ckFxMnl3eENCWXM4OWZGanpMRFk1dm5JX1phZlEtQXVTblp3SzJLSXRzNU50Q2ZYb0RQSzdKVUE0dlNGZHlkTTZaZS1qOTd2cWpVSWNESmhpMHVZT3dkcUdTV2xCeVVIM01Vcjc0b29zVDJpNWhJeFZJYXBPQms1N29VY1BzVEE?oc=5",
+      "content": "Days After Reports of Allowing India, US Govt Asks Anthropic to Suspend Foreign Access to New Models TheWire.in"
+    }
+  },
+  {
+    "label": "different",
+    "a": {
+      "source": "rss",
+      "title": "AI coding agents find the right file but miss the exact lines that matter, study shows - the-decoder.com",
+      "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPMWo2SmpUS0dtTlhWQi1uaG15QXk2S3BBQ0NzMUxHWndHaGFDT3k0UkpncFhPbDlHeEhUWlJRdVJMMHJLX0J4RUkzQjA0bE5UeV84YVFuS0k0SnRPMUp4X2ZGeU1IUUprYkExbE9WdnVpcWhreWZTZjRwNlR3cTJNVHZERGJqSVQyVGpWb1JWb21hbXVNMVNrUkhCVXBpMG42WHgzWHkzYTJ3ZlFoNERB?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPMWo2SmpUS0dtTlhWQi1uaG15QXk2S3BBQ0NzMUxHWndHaGFDT3k0UkpncFhPbDlHeEhUWlJRdVJMMHJLX0J4RUkzQjA0bE5UeV84YVFuS0k0SnRPMUp4X2ZGeU1IUUprYkExbE9WdnVpcWhreWZTZjRwNlR3cTJNVHZERGJqSVQyVGpWb1JWb21hbXVNMVNrUkhCVXBpMG42WHgzWHkzYTJ3ZlFoNERB?oc=5",
+      "content": "AI coding agents find the right file but miss the exact lines that matter, study shows the-decoder.com"
+    },
+    "b": {
+      "source": "rss",
+      "title": "Anthropic blocks all public access to Claude Fable 5, Mythos 5 following US government order \u2014 what enterprises should do - VentureBeat",
+      "url": "https://news.google.com/rss/articles/CBMi6AFBVV95cUxNX2MxcmpFWC0wcWlaVl85Wlg3aTVOT190MGFNSDRYTlZYWURjUU5KMGZhd2V4YU4wempIVU5GUEFNNklQSXk0a3lBU2ZycHh2a3dVUEN3N0w4QndlbGx6RV94U0xGS3hEQXU0TC1PY0otTVl0TmNQeGFaVGxrTXZQOW5DYjB6czJvWHhDb0ZUUVNhQVhncGRfNWxMQ1pqZjFSWlltR0Z5WTZONjVTRnRpVU41VXNCTHJFX0NHUm94bnlFVWVWeDFQT2RlRFprbzlvUmltSjRKQS1tc25JbnlELUVhOVliU0dP?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMi6AFBVV95cUxNX2MxcmpFWC0wcWlaVl85Wlg3aTVOT190MGFNSDRYTlZYWURjUU5KMGZhd2V4YU4wempIVU5GUEFNNklQSXk0a3lBU2ZycHh2a3dVUEN3N0w4QndlbGx6RV94U0xGS3hEQXU0TC1PY0otTVl0TmNQeGFaVGxrTXZQOW5DYjB6czJvWHhDb0ZUUVNhQVhncGRfNWxMQ1pqZjFSWlltR0Z5WTZONjVTRnRpVU41VXNCTHJFX0NHUm94bnlFVWVWeDFQT2RlRFprbzlvUmltSjRKQS1tc25JbnlELUVhOVliU0dP?oc=5",
+      "content": "Anthropic blocks all public access to Claude Fable 5, Mythos 5 following US government order \u2014 what enterprises should do VentureBeat"
+    }
+  },
+  {
+    "label": "different",
+    "a": {
+      "source": "rss",
+      "title": "Anthropic blocks all public access to Claude Fable 5, Mythos 5 following US government order \u2014 what enterprises should do - VentureBeat",
+      "url": "https://news.google.com/rss/articles/CBMi6AFBVV95cUxNX2MxcmpFWC0wcWlaVl85Wlg3aTVOT190MGFNSDRYTlZYWURjUU5KMGZhd2V4YU4wempIVU5GUEFNNklQSXk0a3lBU2ZycHh2a3dVUEN3N0w4QndlbGx6RV94U0xGS3hEQXU0TC1PY0otTVl0TmNQeGFaVGxrTXZQOW5DYjB6czJvWHhDb0ZUUVNhQVhncGRfNWxMQ1pqZjFSWlltR0Z5WTZONjVTRnRpVU41VXNCTHJFX0NHUm94bnlFVWVWeDFQT2RlRFprbzlvUmltSjRKQS1tc25JbnlELUVhOVliU0dP?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMi6AFBVV95cUxNX2MxcmpFWC0wcWlaVl85Wlg3aTVOT190MGFNSDRYTlZYWURjUU5KMGZhd2V4YU4wempIVU5GUEFNNklQSXk0a3lBU2ZycHh2a3dVUEN3N0w4QndlbGx6RV94U0xGS3hEQXU0TC1PY0otTVl0TmNQeGFaVGxrTXZQOW5DYjB6czJvWHhDb0ZUUVNhQVhncGRfNWxMQ1pqZjFSWlltR0Z5WTZONjVTRnRpVU41VXNCTHJFX0NHUm94bnlFVWVWeDFQT2RlRFprbzlvUmltSjRKQS1tc25JbnlELUVhOVliU0dP?oc=5",
+      "content": "Anthropic blocks all public access to Claude Fable 5, Mythos 5 following US government order \u2014 what enterprises should do VentureBeat"
+    },
+    "b": {
+      "source": "rss",
+      "title": "Google's DiffusionGemma Generates Text 4x Faster: Diffusion Replaces Token-by-Token Output - Tech Times",
+      "url": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxOdmtWWVdRWmplWGk4RHZxZjZJb2lpU2dVR3JLeEZSbXh6Xzc1SlZBZWhRSzc5SDdjZVRUYXgxSndvTkJWNEtVeXlWOWVqM1ZnNDFZSWpTYkJkVUJFYnRXSVBvU0RBNmF2SmZoejVUempSNTVVTmNCeDQ5UmU5UHY4ZWFjbnVvcjNuUlZoeU1FMHprNVZ1R3JPSTlWc1RkOHpKLVdEMV8tWlh6REhabU5pWUswajVaRzMxLWR2NlBjNHdBQUF5cm5MX1lHR2k0cXlMMlNYRDdvcw?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxOdmtWWVdRWmplWGk4RHZxZjZJb2lpU2dVR3JLeEZSbXh6Xzc1SlZBZWhRSzc5SDdjZVRUYXgxSndvTkJWNEtVeXlWOWVqM1ZnNDFZSWpTYkJkVUJFYnRXSVBvU0RBNmF2SmZoejVUempSNTVVTmNCeDQ5UmU5UHY4ZWFjbnVvcjNuUlZoeU1FMHprNVZ1R3JPSTlWc1RkOHpKLVdEMV8tWlh6REhabU5pWUswajVaRzMxLWR2NlBjNHdBQUF5cm5MX1lHR2k0cXlMMlNYRDdvcw?oc=5",
+      "content": "Google's DiffusionGemma Generates Text 4x Faster: Diffusion Replaces Token-by-Token Output Tech Times"
+    }
+  },
+  {
+    "label": "different",
+    "a": {
+      "source": "rss",
+      "title": "AI coding agents find the right file but miss the exact lines that matter, study shows",
+      "url": "https://the-decoder.com/ai-coding-agents-find-the-right-file-but-miss-the-exact-lines-that-matter-study-shows",
+      "canonical_url": "https://the-decoder.com/ai-coding-agents-find-the-right-file-but-miss-the-exact-lines-that-matter-study-shows",
+      "content": "AI coding agents like Claude Code or Codex reliably find the right file but miss most of the critical lines within it. The new SWE-Explore benchmark is the first to test code search separately from the actual repair, and it shows that without enough context, even the best fix will fail. The article AI coding agents find the right file but miss the exact lines that matter, study shows appeared first on The Decoder ."
+    },
+    "b": {
+      "source": "rss",
+      "title": "Mistral is rumored to be raising \u20ac3B at \u20ac20B valuation - MSN",
+      "url": "https://news.google.com/rss/articles/CBMiggNBVV95cUxNZ1o3ZF9QN3FpeW9wbnBZTGppcXEtNXVVUjlBZE1MMmtfVWN4R3ZQRnV4Q2JMNEl1eEh4MkpudERCbHJHdkFac3hCc2ZrN1V1bzZVaEN0LXJKODgtMG9BMnhndUFrcTExbURnUjFKVEZ0Z2s3NFBLNFhyZHJRT3I2OEs3R0dkVmphbEQtM1Q1bWxZZkhTdmRaVXlYb1Z6TVE5ZlJ6Z0g5ZFpYb0lucDJmWXJQUzM5QllHcjBCVmVlZkRnbmNBbG5JZ2hxUFFDRU1wZC1aZGFZeGszTUhfQm1vWDZWVnE4Q0lleHRaQ2xjUHVjWEZhc3publVzbllFWTh4cHptZVlvUXlTN3A1TnFDRGlXZ2paNUZ1dUNvZHRlR0dueE5iOWdrc3VNNHNVS2s3X1AzTURDU0ptdDh4VkVSdm92RnBvWHVIWGcxNHI3YmExd2dZaFNLajZ0WktfTnM4ZjJzY1VuSG5JZ1NmZ1k1dnI5cHVwaWsyYWRUZTFta1IwQQ?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMiggNBVV95cUxNZ1o3ZF9QN3FpeW9wbnBZTGppcXEtNXVVUjlBZE1MMmtfVWN4R3ZQRnV4Q2JMNEl1eEh4MkpudERCbHJHdkFac3hCc2ZrN1V1bzZVaEN0LXJKODgtMG9BMnhndUFrcTExbURnUjFKVEZ0Z2s3NFBLNFhyZHJRT3I2OEs3R0dkVmphbEQtM1Q1bWxZZkhTdmRaVXlYb1Z6TVE5ZlJ6Z0g5ZFpYb0lucDJmWXJQUzM5QllHcjBCVmVlZkRnbmNBbG5JZ2hxUFFDRU1wZC1aZGFZeGszTUhfQm1vWDZWVnE4Q0lleHRaQ2xjUHVjWEZhc3publVzbllFWTh4cHptZVlvUXlTN3A1TnFDRGlXZ2paNUZ1dUNvZHRlR0dueE5iOWdrc3VNNHNVS2s3X1AzTURDU0ptdDh4VkVSdm92RnBvWHVIWGcxNHI3YmExd2dZaFNLajZ0WktfTnM4ZjJzY1VuSG5JZ1NmZ1k1dnI5cHVwaWsyYWRUZTFta1IwQQ?oc=5",
+      "content": "Mistral is rumored to be raising \u20ac3B at \u20ac20B valuation MSN"
+    }
+  },
+  {
+    "label": "different",
+    "a": {
+      "source": "rss",
+      "title": "Google's DiffusionGemma Generates Text 4x Faster: Diffusion Replaces Token-by-Token Output - Tech Times",
+      "url": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxOdmtWWVdRWmplWGk4RHZxZjZJb2lpU2dVR3JLeEZSbXh6Xzc1SlZBZWhRSzc5SDdjZVRUYXgxSndvTkJWNEtVeXlWOWVqM1ZnNDFZSWpTYkJkVUJFYnRXSVBvU0RBNmF2SmZoejVUempSNTVVTmNCeDQ5UmU5UHY4ZWFjbnVvcjNuUlZoeU1FMHprNVZ1R3JPSTlWc1RkOHpKLVdEMV8tWlh6REhabU5pWUswajVaRzMxLWR2NlBjNHdBQUF5cm5MX1lHR2k0cXlMMlNYRDdvcw?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxOdmtWWVdRWmplWGk4RHZxZjZJb2lpU2dVR3JLeEZSbXh6Xzc1SlZBZWhRSzc5SDdjZVRUYXgxSndvTkJWNEtVeXlWOWVqM1ZnNDFZSWpTYkJkVUJFYnRXSVBvU0RBNmF2SmZoejVUempSNTVVTmNCeDQ5UmU5UHY4ZWFjbnVvcjNuUlZoeU1FMHprNVZ1R3JPSTlWc1RkOHpKLVdEMV8tWlh6REhabU5pWUswajVaRzMxLWR2NlBjNHdBQUF5cm5MX1lHR2k0cXlMMlNYRDdvcw?oc=5",
+      "content": "Google's DiffusionGemma Generates Text 4x Faster: Diffusion Replaces Token-by-Token Output Tech Times"
+    },
+    "b": {
+      "source": "rss",
+      "title": "OpenClaw: AI Agent Framework Transforming Crypto and Blockchain Automation - KuCoin",
+      "url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxQeVFCYllEemNiN0tmcGUyN2V5Q0ZmTkZyZG15RG1FdDFUVzBCZk93N19jaE5TdEJIaFRwc3M0b3RrajJ2bmlSQUJUSERhR1NzdWd1REZ4V3psS3ZsMk9hdTdaUU9uS0tGM1EtM1JPLXdDTWRoQlFUZHVGZWhKY25pSkdMQnkydUFvWU40LTVCTVlVcy1Sd1JEdjNfenF2aUdkeXVaTk9XSQ?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxQeVFCYllEemNiN0tmcGUyN2V5Q0ZmTkZyZG15RG1FdDFUVzBCZk93N19jaE5TdEJIaFRwc3M0b3RrajJ2bmlSQUJUSERhR1NzdWd1REZ4V3psS3ZsMk9hdTdaUU9uS0tGM1EtM1JPLXdDTWRoQlFUZHVGZWhKY25pSkdMQnkydUFvWU40LTVCTVlVcy1Sd1JEdjNfenF2aUdkeXVaTk9XSQ?oc=5",
+      "content": "OpenClaw: AI Agent Framework Transforming Crypto and Blockchain Automation KuCoin"
+    }
+  },
+  {
+    "label": "different",
+    "a": {
+      "source": "hn",
+      "title": "500-year-old monasteries outperform at digital transformation (U. of Zurich)",
+      "url": "https://phys.org/news/2026-05-historic-monasteries-digital-countries.html",
+      "canonical_url": "https://phys.org/news/2026-05-historic-monasteries-digital-countries.html",
+      "content": null
+    },
+    "b": {
+      "source": "rss",
+      "title": "Llama 3 Performance: Top Enterprise Coding Model Review - TechnoSports Media Group",
+      "url": "https://news.google.com/rss/articles/CBMiY0FVX3lxTFBGb2ZMbENVRzQ5WndQOHY2NEVmcEZvNmdHbTZNNlRBR05YT0lfUFZjVEZBcmd3VW1UX21TRjVpRURka0RaWFhBYnpaa1BBQXVNenVpeWhtWTlOT3BHTXloS291aw?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMiY0FVX3lxTFBGb2ZMbENVRzQ5WndQOHY2NEVmcEZvNmdHbTZNNlRBR05YT0lfUFZjVEZBcmd3VW1UX21TRjVpRURka0RaWFhBYnpaa1BBQXVNenVpeWhtWTlOT3BHTXloS291aw?oc=5",
+      "content": "Llama 3 Performance: Top Enterprise Coding Model Review TechnoSports Media Group"
+    }
+  },
+  {
+    "label": "different",
+    "a": {
+      "source": "rss",
+      "title": "Mistral is rumored to be raising \u20ac3B at \u20ac20B valuation - MSN",
+      "url": "https://news.google.com/rss/articles/CBMiggNBVV95cUxNZ1o3ZF9QN3FpeW9wbnBZTGppcXEtNXVVUjlBZE1MMmtfVWN4R3ZQRnV4Q2JMNEl1eEh4MkpudERCbHJHdkFac3hCc2ZrN1V1bzZVaEN0LXJKODgtMG9BMnhndUFrcTExbURnUjFKVEZ0Z2s3NFBLNFhyZHJRT3I2OEs3R0dkVmphbEQtM1Q1bWxZZkhTdmRaVXlYb1Z6TVE5ZlJ6Z0g5ZFpYb0lucDJmWXJQUzM5QllHcjBCVmVlZkRnbmNBbG5JZ2hxUFFDRU1wZC1aZGFZeGszTUhfQm1vWDZWVnE4Q0lleHRaQ2xjUHVjWEZhc3publVzbllFWTh4cHptZVlvUXlTN3A1TnFDRGlXZ2paNUZ1dUNvZHRlR0dueE5iOWdrc3VNNHNVS2s3X1AzTURDU0ptdDh4VkVSdm92RnBvWHVIWGcxNHI3YmExd2dZaFNLajZ0WktfTnM4ZjJzY1VuSG5JZ1NmZ1k1dnI5cHVwaWsyYWRUZTFta1IwQQ?oc=5",
+      "canonical_url": "https://news.google.com/rss/articles/CBMiggNBVV95cUxNZ1o3ZF9QN3FpeW9wbnBZTGppcXEtNXVVUjlBZE1MMmtfVWN4R3ZQRnV4Q2JMNEl1eEh4MkpudERCbHJHdkFac3hCc2ZrN1V1bzZVaEN0LXJKODgtMG9BMnhndUFrcTExbURnUjFKVEZ0Z2s3NFBLNFhyZHJRT3I2OEs3R0dkVmphbEQtM1Q1bWxZZkhTdmRaVXlYb1Z6TVE5ZlJ6Z0g5ZFpYb0lucDJmWXJQUzM5QllHcjBCVmVlZkRnbmNBbG5JZ2hxUFFDRU1wZC1aZGFZeGszTUhfQm1vWDZWVnE4Q0lleHRaQ2xjUHVjWEZhc3publVzbllFWTh4cHptZVlvUXlTN3A1TnFDRGlXZ2paNUZ1dUNvZHRlR0dueE5iOWdrc3VNNHNVS2s3X1AzTURDU0ptdDh4VkVSdm92RnBvWHVIWGcxNHI3YmExd2dZaFNLajZ0WktfTnM4ZjJzY1VuSG5JZ1NmZ1k1dnI5cHVwaWsyYWRUZTFta1IwQQ?oc=5",
+      "content": "Mistral is rumored to be raising \u20ac3B at \u20ac20B valuation MSN"
+    },
+    "b": {
+      "source": "rss",
+      "title": "Amazon security research reportedly led to the White House\u2019s Anthropic Fable ban",
+      "url": "https://theverge.com/ai-artificial-intelligence/949601/amazon-anthropic-fablemythos-government-ban",
+      "canonical_url": "https://theverge.com/ai-artificial-intelligence/949601/amazon-anthropic-fablemythos-government-ban",
+      "content": "According to the Wall Street Journal, the export control directive that led to Anthropic cutting off access to Fable 5 and Mythos 5 was triggered in part by cybersecurity research from Amazon and conversations between CEO Andy Jassy and the White House. According to the report, the paper from Amazon claims that, through a series [\u2026]"
+    }
+  }
+]

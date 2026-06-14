@@ -4,21 +4,27 @@ from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput
 from app.models.classification import ClassificationOutput
 
+# postgREST sends `in.(...)` filters in the request URL; long canonical URLs (e.g. Google
+# News redirect links) overflow the gateway's URL-length limit, so query in batches.
+_IN_FILTER_BATCH_SIZE = 20
+
 
 async def fetch_existing_canonical_urls(
     gateway: SupabaseGateway, canonical_urls: Sequence[str]
 ) -> set[str]:
     """Return which of ``canonical_urls`` are already persisted, so the pipeline can
     classify only unseen articles and avoid re-paying the per-article LLM cost."""
-    if not canonical_urls:
+    urls = list(canonical_urls)
+    if not urls:
         return set()
-    result = await (
-        gateway.table("articles")
-        .select("canonical_url")
-        .in_("canonical_url", list(canonical_urls))
-        .execute()
-    )
-    return {row["canonical_url"] for row in result.data}
+    existing: set[str] = set()
+    for start in range(0, len(urls), _IN_FILTER_BATCH_SIZE):
+        batch = urls[start : start + _IN_FILTER_BATCH_SIZE]
+        result = await (
+            gateway.table("articles").select("canonical_url").in_("canonical_url", batch).execute()
+        )
+        existing.update(row["canonical_url"] for row in result.data)
+    return existing
 
 
 async def insert_articles(

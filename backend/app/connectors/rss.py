@@ -37,10 +37,10 @@ class RssConnector:
         for feed_url, feed_bytes in zip(self._feed_urls, feed_results, strict=True):
             if feed_bytes is None:
                 continue
-
-            articles.extend(self._feed_to_articles(feed_url, feed_bytes))
-            if len(articles) >= limit:
-                return articles[:limit]
+            # Per-feed cap: each feed contributes at most `limit`, so one dense feed
+            # (e.g. a Google News query returning ~100 items) can't starve the others.
+            # Total is bounded by limit * len(feed_urls).
+            articles.extend(self._feed_to_articles(feed_url, feed_bytes)[:limit])
 
         return articles
 

@@ -5,6 +5,10 @@ from app.core.supabase import SupabaseGateway
 from app.models.article import EmbeddedArticle
 from app.models.cluster import ClusterResult, ExistingCluster
 
+# postgREST sends `in.(...)` filters in the request URL; long canonical URLs overflow the
+# gateway's URL-length limit, so query in batches.
+_IN_FILTER_BATCH_SIZE = 20
+
 
 def _parse_vector(raw: object) -> list[float]:
     """pgvector columns come back from postgREST as a "[...]" string; normalize to floats."""
@@ -51,13 +55,18 @@ async def fetch_existing_clusters(gateway: SupabaseGateway) -> list[ExistingClus
 async def _fetch_article_ids(
     gateway: SupabaseGateway, canonical_urls: list[str]
 ) -> dict[str, str]:
-    result = await (
-        gateway.table("articles")
-        .select("id, canonical_url")
-        .in_("canonical_url", canonical_urls)
-        .execute()
-    )
-    return {row["canonical_url"]: row["id"] for row in result.data}
+    # Batch the `in.(...)` filter — long Google News URLs overflow the request URL limit.
+    ids: dict[str, str] = {}
+    for start in range(0, len(canonical_urls), _IN_FILTER_BATCH_SIZE):
+        batch = canonical_urls[start : start + _IN_FILTER_BATCH_SIZE]
+        result = await (
+            gateway.table("articles")
+            .select("id, canonical_url")
+            .in_("canonical_url", batch)
+            .execute()
+        )
+        ids.update({row["canonical_url"]: row["id"] for row in result.data})
+    return ids
 
 
 async def _link_members(
