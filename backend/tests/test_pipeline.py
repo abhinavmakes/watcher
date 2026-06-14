@@ -5,8 +5,9 @@ from typing import cast
 import pytest
 
 from app.core.supabase import SupabaseGateway
-from app.models.article import ArticleInput
+from app.models.article import ArticleInput, EmbeddedArticle
 from app.models.classification import ArticleDomain, ClassificationOutput
+from app.models.cluster import ClusterResult, ExistingCluster
 from app.models.pipeline_run import PipelineRunSummary
 from worker.pipeline import ConnectorSpec, _deduplicate_fetched_articles, run_pipeline
 
@@ -159,6 +160,7 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     duplicate_article = _article("RSS story", source="rss", canonical_url=canonical_url)
     inserted_pairs: list[tuple[ArticleInput, ClassificationOutput | None]] = []
     persisted_summaries: list[PipelineRunSummary] = []
+    captured_embeddings: dict[str, list[float]] = {}
 
     async def fake_insert_articles(
         gateway: SupabaseGateway,
@@ -166,6 +168,8 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
         embeddings: dict[str, list[float]] | None = None,
     ) -> int:
         inserted_pairs.extend(articles)
+        if embeddings:
+            captured_embeddings.update(embeddings)
         return len(articles)
 
     monkeypatch.setattr("worker.pipeline.insert_articles", fake_insert_articles)
@@ -184,6 +188,22 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     monkeypatch.setattr("worker.pipeline.insert_pipeline_run", fake_insert_pipeline_run)
     monkeypatch.setattr("worker.pipeline.fetch_existing_canonical_urls", fake_fetch_existing)
 
+    cluster_results: list[ClusterResult] = []
+
+    async def fake_fetch_existing_clusters(gateway: SupabaseGateway) -> list[ExistingCluster]:
+        return []
+
+    async def fake_persist_cluster_result(
+        gateway: SupabaseGateway,
+        result: ClusterResult,
+        existing_clusters: Sequence[ExistingCluster],
+        embedded: Sequence[EmbeddedArticle],
+    ) -> None:
+        cluster_results.append(result)
+
+    monkeypatch.setattr("worker.pipeline.fetch_existing_clusters", fake_fetch_existing_clusters)
+    monkeypatch.setattr("worker.pipeline.persist_cluster_result", fake_persist_cluster_result)
+
     summary = await run_pipeline(
         [
             ConnectorSpec(name="hn", connector=FakeConnector([first_article]), limit=10),
@@ -196,6 +216,8 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     assert summary.articles_classified == 1
     assert [article for article, _ in inserted_pairs] == [first_article]
     assert all(classification is not None for _, classification in inserted_pairs)
+    assert captured_embeddings == {canonical_url: [0.0] * 8}
+    assert len(cluster_results) == 1
     assert persisted_summaries == [summary]
     assert summary.source_stats["hn"].duplicates == 0
     assert summary.source_stats["rss"].duplicates == 1
@@ -231,6 +253,20 @@ async def test_run_pipeline_skips_articles_already_in_db(
     monkeypatch.setattr("worker.pipeline.fetch_existing_canonical_urls", fake_fetch_existing)
     monkeypatch.setattr("worker.pipeline.insert_articles", fake_insert_articles)
     monkeypatch.setattr("worker.pipeline.insert_pipeline_run", fake_insert_pipeline_run)
+
+    async def fake_fetch_existing_clusters(gateway: SupabaseGateway) -> list[ExistingCluster]:
+        return []
+
+    async def fake_persist_cluster_result(
+        gateway: SupabaseGateway,
+        result: ClusterResult,
+        existing_clusters: Sequence[ExistingCluster],
+        embedded: Sequence[EmbeddedArticle],
+    ) -> None:
+        return None
+
+    monkeypatch.setattr("worker.pipeline.fetch_existing_clusters", fake_fetch_existing_clusters)
+    monkeypatch.setattr("worker.pipeline.persist_cluster_result", fake_persist_cluster_result)
 
     summary = await run_pipeline(
         [ConnectorSpec(name="hn", connector=FakeConnector([known, fresh]), limit=10)],

@@ -6,20 +6,19 @@ Build order is risk-first: pipeline with HN + curated RSS → clustering eval �
 
 ## Current checkpoint
 
-Fetch → dedup → classify → persist works end to end against live Supabase and Gemini:
+Fetch → dedup → classify → embed → persist works end to end against live Supabase:
 
 - HN and RSS connectors normalize into `ArticleInput`
 - Worker fetch stage runs connector specs concurrently and records per-source stats
-- Current-run duplicate articles removed by `canonical_url`
-- `article_store.insert_articles` upserts on `canonical_url` (idempotent across runs)
-- `pipeline_runs` audit row written every execution (`articles_fetched`, `articles_classified`, `source_stats`)
-- **Classifier agent (`app/agents/classifier.py`) live: Gemini Flash-Lite via PydanticAI, structured output (`domains`, `relevance_score`, `is_noise`, `reason`)**
-- **Batch orchestrator `_classify_articles` in `worker/pipeline.py`: serial loop with `sleep(60 / classifier_rpm)` between calls, per-article try/except, function contract never raises**
-- **Classification columns (`domains`, `relevance`, `is_noise`) persisted alongside the article row when present; DB defaults handle failed classifications**
-- 49/49 tests green; ruff and mypy clean
-- Live smoke against Gemini + hosted Supabase passed (5 HN articles classified, rows visible)
+- Current-run duplicate articles removed by `canonical_url`; already-persisted `canonical_url`s skipped before the LLM (dedup-before-classify)
+- **Classifier agent (`app/agents/classifier.py`) live: Claude Haiku 4.5 via PydanticAI, structured output (`domains`, `relevance_score`, `is_noise`, `reason`)**, with a 50-article blind-labeled eval (`scripts/eval_classifier.py`, PASS at noise precision 0.96 / recall 0.92)
+- **Embedding spine live: `format_embedding_input` (Select-with-tags) → batched `embed_texts` (OpenAI `text-embedding-3-small`, 768-dim) → `articles.embedding` (pgvector); only non-noise articles embedded**
+- `article_store.insert_articles` upserts on `canonical_url` (idempotent across runs), now writing the `embedding` column when a vector exists
+- `pipeline_runs` audit row written every execution
+- 61 tests green; ruff and mypy clean
+- Live run verified: 36 classified → 33 embedded → persisted
 
-The next slice is classifier eval, not embedding. We lock in quality on the classifier before stacking another agent stage on top. See `docs/NEXT_SESSION.md`.
+The next slice is **clustering** — group same-story vectors into stories — then synthesis gating, then momentum. See `docs/NEXT_SESSION.md`.
 
 ## Week 1: Data pipeline + backend core
 
@@ -59,11 +58,11 @@ The next slice is classifier eval, not embedding. We lock in quality on the clas
 
 ### Day 3-4: Embedding + more connectors (8h)
 
-**Embedding pipeline**
-- Google text-embedding-005 integration
-- Embed title + content (truncated to 512 tokens)
+**Embedding pipeline** *(done — see Current checkpoint)*
+- OpenAI `text-embedding-3-small` (768-dim) integration
+- Embed title + content (whitespace-cleaned, capped at `EMBEDDING_MAX_CONTENT_CHARS`) + tags when present; only non-noise articles
 - Store embedding in pgvector column on articles table
-- Test: embed 10 articles, verify vectors stored correctly
+- Batched (`EMBEDDING_BATCH_SIZE`), one call per pipeline run
 
 **RSS connector**
 - Implement RSS connector with feedparser
@@ -103,13 +102,12 @@ The next slice is classifier eval, not embedding. We lock in quality on the clas
 - Use the results to confirm or adjust `CLUSTER_EXISTING_SIMILARITY_THRESHOLD` and `CLUSTER_NEW_SIMILARITY_THRESHOLD`
 - Do not start frontend work until this script shows believable separation on real Watcher data
 
-**Clustering agent**
-- Phase 1: cosine similarity between new article embeddings and existing cluster centroids
-- Articles above 0.85 threshold join existing clusters
-- Remaining articles: agglomerative clustering (scipy.cluster.hierarchy) with 0.83 threshold
-- Phase 2: LLM call to name new clusters
-- Update cluster centroids (running average of member embeddings)
-- Update cluster domains as the union of member article domains
+**Clustering** — implemented in `app/services/clustering.py` (pure) + `app/services/cluster_store.py` (persistence), wired into the pipeline.
+- Phase A: cosine similarity between new article embeddings and existing cluster centroids; articles ≥ `CLUSTER_EXISTING_SIMILARITY_THRESHOLD` (0.85) join that cluster.
+- Phase B: remaining orphans grouped against each other in a custom greedy single-pass at `CLUSTER_NEW_SIMILARITY_THRESHOLD` (0.83) — no clustering library, so the decision rule stays explicit. Singletons stay unclustered (true orphans; surfaced only when a sibling later joins).
+- Existing-cluster centroids recomputed via running mean (stored centroid + article_count, no member re-fetch); cluster domains = union of member domains.
+- New clusters get a provisional title (highest-relevance member's article title); LLM naming happens later in synthesis.
+- Remaining gate: `scripts/eval_clustering.py` to confirm the two thresholds separate on real data before any frontend work.
 
 **Synthesis agent**
 - Implement synthesizer with PydanticAI (Gemini 2.5 Flash)
