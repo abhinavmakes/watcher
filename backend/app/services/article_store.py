@@ -27,6 +27,22 @@ async def fetch_existing_canonical_urls(
     return existing
 
 
+async def fetch_existing_canonical_urls(
+    gateway: SupabaseGateway, canonical_urls: Sequence[str]
+) -> set[str]:
+    """Return which of ``canonical_urls`` are already persisted, so the pipeline can
+    classify only unseen articles and avoid re-paying the per-article LLM cost."""
+    if not canonical_urls:
+        return set()
+    result = await (
+        gateway.table("articles")
+        .select("canonical_url")
+        .in_("canonical_url", list(canonical_urls))
+        .execute()
+    )
+    return {row["canonical_url"] for row in result.data}
+
+
 async def insert_articles(
     gateway: SupabaseGateway,
     articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
