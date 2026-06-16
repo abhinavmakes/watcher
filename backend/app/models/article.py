@@ -22,6 +22,7 @@ class EmbeddedArticle(BaseModel):
     canonical_url: str = Field(min_length=1)
     title: str = Field(min_length=1)
     domains: list[ArticleDomain]
+    key_entities: list[str] = Field(default_factory=list)
     relevance: float = Field(ge=0.0, le=1.0)
     published_at: datetime | None = None
     vector: list[float]

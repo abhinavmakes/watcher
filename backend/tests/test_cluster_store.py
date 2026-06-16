@@ -77,11 +77,14 @@ class RecordingGateway:
         return RecordingQuery(table_name, self.calls, self._responses)
 
 
-def _embedded(url: str, vector: list[float], relevance: float) -> EmbeddedArticle:
+def _embedded(
+    url: str, vector: list[float], relevance: float, key_entities: list[str] | None = None
+) -> EmbeddedArticle:
     return EmbeddedArticle(
         canonical_url=url,
         title=f"{url} title",
         domains=[ArticleDomain.LLMS],
+        key_entities=key_entities or [],
         relevance=relevance,
         vector=vector,
     )
@@ -104,15 +107,24 @@ async def test_fetch_existing_clusters_parses_and_skips_null_centroid() -> None:
     gateway = RecordingGateway(
         {
             ("clusters", "select"): [
-                {"id": "c1", "centroid": "[0.1, 0.2, 0.3]", "article_count": 4},
-                {"id": "c2", "centroid": None, "article_count": 1},
+                {
+                    "id": "c1",
+                    "centroid": "[0.1, 0.2, 0.3]",
+                    "article_count": 4,
+                    "key_entities": ["anthropic"],
+                },
+                {"id": "c2", "centroid": None, "article_count": 1, "key_entities": []},
             ]
         }
     )
 
     clusters = await fetch_existing_clusters(cast(SupabaseGateway, gateway))
 
-    assert clusters == [ExistingCluster(id="c1", centroid=[0.1, 0.2, 0.3], article_count=4)]
+    assert clusters == [
+        ExistingCluster(
+            id="c1", centroid=[0.1, 0.2, 0.3], article_count=4, key_entities=["anthropic"]
+        )
+    ]
     assert gateway.calls[0].table == "clusters"
     assert gateway.calls[0].filters == {"status": "active"}
 
@@ -135,16 +147,21 @@ async def test_persist_inserts_new_clusters_and_updates_existing() -> None:
                 centroid=[1.0, 0.25, 0.0],
                 member_urls=["a", "b"],
                 domains=[ArticleDomain.AI_AGENTS, ArticleDomain.LLMS],
+                key_entities=["amazon", "anthropic"],
             )
         ],
         updated={"existing-1": ["d"]},
         orphans=["c"],
     )
-    existing = [ExistingCluster(id="existing-1", centroid=[0.0, 0.0, 1.0], article_count=2)]
+    existing = [
+        ExistingCluster(
+            id="existing-1", centroid=[0.0, 0.0, 1.0], article_count=2, key_entities=["anthropic"]
+        )
+    ]
     embedded = [
         _embedded("a", [1.0, 0.0, 0.0], relevance=0.9),
         _embedded("b", [1.0, 0.5, 0.0], relevance=0.5),
-        _embedded("d", [0.0, 0.5, 1.0], relevance=0.7),
+        _embedded("d", [0.0, 0.5, 1.0], relevance=0.7, key_entities=["fable"]),
     ]
 
     await persist_cluster_result(cast(SupabaseGateway, gateway), result, existing, embedded)
@@ -163,12 +180,14 @@ async def test_persist_inserts_new_clusters_and_updates_existing() -> None:
     assert insert.payload["domains"] == ["ai_agents", "llms"]
     assert insert.payload["article_count"] == 2
     assert insert.payload["signal_type"] == "cluster"
+    assert insert.payload["key_entities"] == ["amazon", "anthropic"]
 
     # Existing cluster: centroid recomputed via running mean, count bumped.
     update = by("clusters", "update")[0]
     assert update.filters == {"id": "existing-1"}
     assert update.payload["centroid"] == pytest.approx([0.0, 1 / 6, 1.0])
     assert update.payload["article_count"] == 3
+    assert update.payload["key_entities"] == ["anthropic", "fable"]
 
     # cluster_articles links by resolved article_id, idempotent on the composite PK.
     link_payloads = [c.payload for c in by("cluster_articles", "upsert")]

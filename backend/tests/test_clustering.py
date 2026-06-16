@@ -7,10 +7,19 @@ from app.services.clustering import _mean_centroid, cluster_articles, cosine_sim
 
 
 def _embedded(
-    url: str, vector: list[float], domains: list[ArticleDomain], relevance: float = 0.5
+    url: str,
+    vector: list[float],
+    domains: list[ArticleDomain],
+    relevance: float = 0.5,
+    key_entities: list[str] | None = None,
 ) -> EmbeddedArticle:
     return EmbeddedArticle(
-        canonical_url=url, title=url, domains=domains, relevance=relevance, vector=vector
+        canonical_url=url,
+        title=url,
+        domains=domains,
+        key_entities=key_entities or [],
+        relevance=relevance,
+        vector=vector,
     )
 
 
@@ -73,3 +82,41 @@ def test_full_run_splits_across_both_phases() -> None:
     assert result.updated == {"cluster-existing": ["https://d"]}
     assert [cl.member_urls for cl in result.new_clusters] == [["https://a", "https://b"]]
     assert result.orphans == ["https://c"]
+
+
+def test_entity_anchored_merge_below_cosine_threshold() -> None:
+    # cosine ~0.74 sits below CLUSTER_NEW (0.75), but a shared entity merges them.
+    a = _embedded("https://a", [1.0, 0.0, 0.0], [ArticleDomain.LLMS], key_entities=["anthropic"])
+    b = _embedded("https://b", [1.0, 0.9, 0.0], [ArticleDomain.LLMS], key_entities=["anthropic"])
+
+    result = cluster_articles([a, b], [])
+
+    assert len(result.new_clusters) == 1
+    assert result.new_clusters[0].member_urls == ["https://a", "https://b"]
+    assert result.new_clusters[0].key_entities == ["anthropic"]
+    assert result.orphans == []
+
+
+def test_no_merge_below_cosine_without_shared_entity() -> None:
+    # Same ~0.74 cosine, but no shared entity -> they stay apart (precision preserved).
+    a = _embedded("https://a", [1.0, 0.0, 0.0], [ArticleDomain.LLMS], key_entities=["openai"])
+    b = _embedded("https://b", [1.0, 0.9, 0.0], [ArticleDomain.LLMS], key_entities=["mistral"])
+
+    result = cluster_articles([a, b], [])
+
+    assert result.new_clusters == []
+    assert sorted(result.orphans) == ["https://a", "https://b"]
+
+
+def test_phase_a_entity_anchored_join_below_cosine_threshold() -> None:
+    article = _embedded(
+        "https://d", [1.0, 0.9, 0.0], [ArticleDomain.LLMS], key_entities=["anthropic"]
+    )
+    existing = ExistingCluster(
+        id="c1", centroid=[1.0, 0.0, 0.0], article_count=2, key_entities=["anthropic"]
+    )
+
+    result = cluster_articles([article], [existing])
+
+    assert result.updated == {"c1": ["https://d"]}
+    assert result.new_clusters == []

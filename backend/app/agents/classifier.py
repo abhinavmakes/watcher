@@ -110,6 +110,7 @@ Return only ClassificationOutput:
 - relevance_score: float from 0.0 to 1.0
 - is_noise: boolean
 - reason: one short factual sentence
+- key_entities: 2-6 specific named entities the story is about
 
 ArticleDomain values:
 {_DOMAIN_GUIDE_JSON}
@@ -168,6 +169,13 @@ Evaluate from the perspective of a senior engineer or technical founder asking:
 - Do not classify by hype words alone. "AI", "agent", "cloud", or "startup" in
   title is not enough.
 - Do not invent facts beyond title/content/source_metadata.
+- key_entities: the specific subjects that identify the *event* — concrete
+  organizations, products, model or version names, projects, packages, or people
+  (e.g. "anthropic", "claude fable 5", "postgres", "cve-2026-1234"). Prefer the
+  precise subject over the broad category; never use generic words like "ai",
+  "llm", "startup", "cloud", or "open source". For non-noise articles, always
+  include the central organization or product and return at least 2 entities; use
+  [] only when is_noise=true.
 - Reason must explain the decisive signal or missing signal in one sentence.
 </decision_rules>
 

@@ -34,7 +34,7 @@ def _update_centroid(
 async def fetch_existing_clusters(gateway: SupabaseGateway) -> list[ExistingCluster]:
     result = await (
         gateway.table("clusters")
-        .select("id, centroid, article_count")
+        .select("id, centroid, article_count, key_entities")
         .eq("status", "active")
         .execute()
     )
@@ -47,6 +47,7 @@ async def fetch_existing_clusters(gateway: SupabaseGateway) -> list[ExistingClus
                 id=row["id"],
                 centroid=_parse_vector(row["centroid"]),
                 article_count=row["article_count"],
+                key_entities=row.get("key_entities") or [],
             )
         )
     return clusters
@@ -111,6 +112,7 @@ async def persist_cluster_result(
             "title": by_url[title_url].title,
             "centroid": cluster.centroid,
             "domains": [str(domain) for domain in cluster.domains],
+            "key_entities": cluster.key_entities,
             "article_count": len(cluster.member_urls),
             "signal_type": "cluster",
         }
@@ -124,9 +126,18 @@ async def persist_cluster_result(
         new_centroid, new_count = _update_centroid(
             existing.centroid, existing.article_count, new_vectors
         )
+        merged_entities = set(existing.key_entities)
+        for url in urls:
+            merged_entities.update(by_url[url].key_entities)
         await (
             gateway.table("clusters")
-            .update({"centroid": new_centroid, "article_count": new_count})
+            .update(
+                {
+                    "centroid": new_centroid,
+                    "article_count": new_count,
+                    "key_entities": sorted(merged_entities),
+                }
+            )
             .eq("id", cluster_id)
             .execute()
         )

@@ -102,12 +102,11 @@ The next slice is **clustering** — group same-story vectors into stories — t
 - Use the results to confirm or adjust `CLUSTER_EXISTING_SIMILARITY_THRESHOLD` and `CLUSTER_NEW_SIMILARITY_THRESHOLD`
 - Do not start frontend work until this script shows believable separation on real Watcher data
 
-**Clustering** — implemented in `app/services/clustering.py` (pure) + `app/services/cluster_store.py` (persistence), wired into the pipeline.
-- Phase A: cosine similarity between new article embeddings and existing cluster centroids; articles ≥ `CLUSTER_EXISTING_SIMILARITY_THRESHOLD` (0.85) join that cluster.
-- Phase B: remaining orphans grouped against each other in a custom greedy single-pass at `CLUSTER_NEW_SIMILARITY_THRESHOLD` (0.83) — no clustering library, so the decision rule stays explicit. Singletons stay unclustered (true orphans; surfaced only when a sibling later joins).
-- Existing-cluster centroids recomputed via running mean (stored centroid + article_count, no member re-fetch); cluster domains = union of member domains.
-- New clusters get a provisional title (highest-relevance member's article title); LLM naming happens later in synthesis.
-- Remaining gate: `scripts/eval_clustering.py` to confirm the two thresholds separate on real data before any frontend work.
+**Clustering** — `app/services/clustering.py` (pure) + `app/services/cluster_store.py` (persistence), wired into the pipeline. **Validated on fresh data (2026-06-16): 100 articles → 6 clean same-event clusters, incl. two 10-outlet "hero story" clusters (Nvidia bond sale, Anthropic/White House).**
+- Phase A: cosine of new article embeddings vs existing cluster centroids; Phase B: greedy single-pass grouping of remaining orphans — no clustering library, decision rule stays explicit. Singletons stay unclustered (single-source signals).
+- **Two-tier entity-anchored merge:** join if cosine ≥ the high tier (`CLUSTER_EXISTING`=0.78 / `CLUSTER_NEW`=0.75) **OR** (cosine ≥ `CLUSTER_ENTITY`=0.65 **AND** the article shares a key entity with the cluster). Entities (`key_entities`) come free from the classifier call; this buys recall on same-story coverage without lowering the cosine floor for unrelated articles — which a single threshold cannot do. Surface-form drift is a known limitation, carried by the consistent org-entity anchor.
+- Centroids recomputed via running mean; cluster `domains` + `key_entities` = union of members. New clusters get a provisional title (highest-relevance member); LLM naming comes in synthesis.
+- Eval: `scripts/eval_clustering.py` over a labeled fixture confirms cosine separation (clean: different ≤0.32, same ≥0.61). Remaining: expand the fixture with same-org hard negatives to formally bound the entity tier.
 
 **Synthesis agent**
 - Implement synthesizer with PydanticAI (Gemini 2.5 Flash)

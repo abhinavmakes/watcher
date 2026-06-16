@@ -112,6 +112,7 @@ async def _embed_articles(
             canonical_url=article.canonical_url,
             title=article.title,
             domains=classification.domains,
+            key_entities=classification.key_entities,
             relevance=classification.relevance_score,
             published_at=article.published_at,
             vector=vector,
