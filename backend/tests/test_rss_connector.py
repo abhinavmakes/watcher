@@ -73,3 +73,38 @@ async def test_fetch_articles_returns_empty_for_non_positive_limit() -> None:
         articles = await RssConnector(client, [FEED_URL]).fetch_articles(limit=0)
 
     assert articles == []
+
+
+def _multi_item_feed_xml(prefix: str, count: int) -> bytes:
+    items = "".join(
+        f"""
+    <item>
+      <title>{prefix} {index}</title>
+      <link>https://www.example.com/{prefix.lower()}/{index}</link>
+      <guid>{prefix.lower()}-{index}</guid>
+    </item>"""
+        for index in range(count)
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<rss version="2.0"><channel><title>{prefix} Feed</title>{items}</channel></rss>'
+    ).encode()
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_fetch_articles_applies_per_feed_cap() -> None:
+    feed_a = "https://example.com/a.xml"
+    feed_b = "https://example.com/b.xml"
+    respx.get(feed_a).mock(
+        return_value=httpx.Response(200, content=_multi_item_feed_xml("Alpha", 3))
+    )
+    respx.get(feed_b).mock(
+        return_value=httpx.Response(200, content=_multi_item_feed_xml("Beta", 3))
+    )
+
+    async with httpx.AsyncClient() as client:
+        articles = await RssConnector(client, [feed_a, feed_b]).fetch_articles(limit=2)
+
+    # Each feed contributes at most `limit`; the dense first feed does not starve the second.
+    assert [article.title for article in articles] == ["Alpha 0", "Alpha 1", "Beta 0", "Beta 1"]

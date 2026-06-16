@@ -52,8 +52,11 @@ class Settings(BaseSettings):
     hn_fetch_limit: int = Field(default=30, ge=1)
     rss_fetch_limit: int = Field(default=50, ge=1)
     rss_feed_urls: str = ""
-    cluster_existing_similarity_threshold: float = Field(default=0.85, ge=0.0, le=1.0)
-    cluster_new_similarity_threshold: float = Field(default=0.83, ge=0.0, le=1.0)
+    cluster_existing_similarity_threshold: float = Field(default=0.78, ge=0.0, le=1.0)
+    cluster_new_similarity_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
+    # Lower tier used only when the article and cluster share a key entity (entity-anchored
+    # merge): catches same-story coverage that sits below the cosine-only thresholds.
+    cluster_entity_similarity_threshold: float = Field(default=0.65, ge=0.0, le=1.0)
     momentum_stale_hours: int = Field(default=48, ge=1)
     high_signal_source_domains: str = (
         "openai.com,anthropic.com,ai.googleblog.com,huggingface.co,fastapi.tiangolo.com"

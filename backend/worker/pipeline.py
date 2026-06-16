@@ -8,10 +8,12 @@ from app.agents.classifier import classify_article
 from app.connectors.base import ArticleConnector
 from app.core.config import settings
 from app.core.supabase import SupabaseGateway
-from app.models.article import ArticleInput
+from app.models.article import ArticleInput, EmbeddedArticle
 from app.models.classification import ClassificationOutput
 from app.models.pipeline_run import PipelineRunStatus, PipelineRunSummary, SourceFetchStats
 from app.services.article_store import fetch_existing_canonical_urls, insert_articles
+from app.services.cluster_store import fetch_existing_clusters, persist_cluster_result
+from app.services.clustering import cluster_articles
 from app.services.embeddings import embed_texts, format_embedding_input
 from app.services.pipeline_run_store import insert_pipeline_run
 
@@ -97,18 +99,26 @@ async def _classify_articles(
 
 async def _embed_articles(
     classified: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
-) -> dict[str, list[float]]:
+) -> list[EmbeddedArticle]:
     selected = [
-        article
+        (article, classification)
         for article, classification in classified
         if classification is not None and not classification.is_noise
     ]
-    texts = [format_embedding_input(article) for article in selected]
+    texts = [format_embedding_input(article) for article, _ in selected]
     vectors = await embed_texts(texts)
-    return {
-        article.canonical_url: vector
-        for article, vector in zip(selected, vectors, strict=True)
-    }
+    return [
+        EmbeddedArticle(
+            canonical_url=article.canonical_url,
+            title=article.title,
+            domains=classification.domains,
+            key_entities=classification.key_entities,
+            relevance=classification.relevance_score,
+            published_at=article.published_at,
+            vector=vector,
+        )
+        for (article, classification), vector in zip(selected, vectors, strict=True)
+    ]
 
 
 async def run_pipeline(
@@ -146,13 +156,20 @@ async def run_pipeline(
         )
         for result in results
     }
+    clusters_created = 0
+    clusters_updated = 0
     if gateway is not None:
-        embeddings_by_url = await _embed_articles(classified_articles)
+        embedded = await _embed_articles(classified_articles)
         await insert_articles(
             gateway=gateway,
             articles=classified_articles,
-            embeddings=embeddings_by_url,
+            embeddings={item.canonical_url: item.vector for item in embedded},
         )
+        existing_clusters = await fetch_existing_clusters(gateway)
+        cluster_result = cluster_articles(embedded, existing_clusters)
+        await persist_cluster_result(gateway, cluster_result, existing_clusters, embedded)
+        clusters_created = len(cluster_result.new_clusters)
+        clusters_updated = len(cluster_result.updated)
 
     summary = PipelineRunSummary(
         started_at=started_at,
@@ -161,6 +178,8 @@ async def run_pipeline(
         articles_fetched=len(all_articles),
         articles_classified=sum(1 for _, c in classified_articles if c is not None),
         articles_skipped_known=articles_skipped_known,
+        clusters_created=clusters_created,
+        clusters_updated=clusters_updated,
         source_stats=source_stats,
     )
 

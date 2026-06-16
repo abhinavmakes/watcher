@@ -11,9 +11,19 @@ from worker.pipeline import ConnectorSpec, run_pipeline
 
 logger = logging.getLogger(__name__)
 
+# Some feeds (e.g. The Verge) reject requests without a browser-like User-Agent.
+_USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
+
 
 async def _run_once() -> None:
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(
+        timeout=20.0,
+        headers={"User-Agent": _USER_AGENT},
+        follow_redirects=True,
+    ) as client:
         connector_specs = [
             ConnectorSpec(
                 name="hn",

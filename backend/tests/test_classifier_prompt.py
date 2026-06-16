@@ -56,3 +56,21 @@ def test_classification_output_limits_domains_to_three() -> None:
         ArticleDomain.PYTHON,
         ArticleDomain.DEV_TOOLS,
     ]
+
+
+def test_classifier_prompt_asks_for_key_entities() -> None:
+    assert "key_entities" in CLASSIFIER_SYSTEM_PROMPT
+
+
+def test_classification_output_normalizes_key_entities() -> None:
+    output = ClassificationOutput.model_validate(
+        {
+            "domains": ["llms"],
+            "relevance_score": 0.8,
+            "is_noise": False,
+            "reason": "Model release.",
+            "key_entities": ["Anthropic", " anthropic ", "Claude Fable 5", ""],
+        }
+    )
+
+    assert output.key_entities == ["anthropic", "claude fable 5"]
