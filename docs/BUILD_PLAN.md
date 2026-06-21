@@ -20,7 +20,7 @@ Fetch → dedup → classify → embed → cluster → **synthesize** → persis
 - 81 tests green; ruff and mypy clean
 - Live run verified (2026-06-21): 210 classified → 15 clusters → 15/15 synthesized, 0 failures
 
-The next slice is **momentum** — recency-weighted growth scoring + stale marking — then the API, then frontend. See `docs/NEXT_SESSION.md`.
+The next slice is **momentum** — recency-weighted growth scoring + stale marking — then the API, then frontend. See the latest `docs/SESSION_*.md`.
 
 ## Week 1: Data pipeline + backend core
 
