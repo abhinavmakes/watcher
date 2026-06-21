@@ -7,6 +7,7 @@ from app.core.supabase import SupabaseGateway
 from app.models.article import EmbeddedArticle
 from app.models.classification import ArticleDomain
 from app.models.cluster import Cluster, ClusterResult, ExistingCluster
+from app.models.synthesis import SynthesisOutput
 from app.services.cluster_store import (
     _parse_vector,
     _update_centroid,
@@ -195,6 +196,85 @@ async def test_persist_inserts_new_clusters_and_updates_existing() -> None:
     assert {"cluster_id": "new-1", "article_id": "bid"} in link_payloads[0]
     assert link_payloads[1] == [{"cluster_id": "existing-1", "article_id": "did"}]
     assert by("cluster_articles", "upsert")[0].on_conflict == "cluster_id,article_id"
+
+
+@pytest.mark.asyncio
+async def test_persist_writes_synthesis_onto_new_cluster() -> None:
+    gateway = RecordingGateway(
+        {
+            ("articles", "select"): [
+                {"id": "aid", "canonical_url": "a"},
+                {"id": "bid", "canonical_url": "b"},
+            ],
+            ("clusters", "insert"): [{"id": "new-1"}],
+        }
+    )
+    result = ClusterResult(
+        new_clusters=[
+            Cluster(
+                centroid=[1.0, 0.0, 0.0],
+                member_urls=["a", "b"],
+                domains=[ArticleDomain.LLMS],
+                key_entities=["anthropic"],
+            )
+        ],
+        updated={},
+        orphans=[],
+    )
+    embedded = [
+        _embedded("a", [1.0, 0.0, 0.0], relevance=0.9),
+        _embedded("b", [1.0, 0.5, 0.0], relevance=0.5),
+    ]
+    synthesis = SynthesisOutput(
+        title="Anthropic ships a 1M-token context window",
+        summary="Anthropic released a 1M-token Claude model at standard pricing.",
+        so_what="Revisit whether your RAG layer still earns its complexity.",
+    )
+
+    await persist_cluster_result(
+        cast(SupabaseGateway, gateway), result, [], embedded, [synthesis]
+    )
+
+    insert = next(c for c in gateway.calls if c.table == "clusters" and c.op == "insert")
+    # Synthesis title overrides the member-headline fallback; summary/so_what are written.
+    assert insert.payload["title"] == "Anthropic ships a 1M-token context window"
+    assert insert.payload["summary"] == synthesis.summary
+    assert insert.payload["so_what"] == synthesis.so_what
+    assert insert.payload["signal_type"] == "cluster"
+
+
+@pytest.mark.asyncio
+async def test_persist_falls_back_to_member_title_when_synthesis_missing() -> None:
+    gateway = RecordingGateway(
+        {
+            ("articles", "select"): [{"id": "aid", "canonical_url": "a"}],
+            ("clusters", "insert"): [{"id": "new-1"}],
+        }
+    )
+    result = ClusterResult(
+        new_clusters=[
+            Cluster(
+                centroid=[1.0, 0.0, 0.0],
+                member_urls=["a", "b"],
+                domains=[ArticleDomain.LLMS],
+                key_entities=["anthropic"],
+            )
+        ],
+        updated={},
+        orphans=[],
+    )
+    embedded = [
+        _embedded("a", [1.0, 0.0, 0.0], relevance=0.9),
+        _embedded("b", [1.0, 0.5, 0.0], relevance=0.5),
+    ]
+
+    # synthesis is None for this cluster (failed/skipped) -> fall back, no summary/so_what.
+    await persist_cluster_result(cast(SupabaseGateway, gateway), result, [], embedded, [None])
+
+    insert = next(c for c in gateway.calls if c.table == "clusters" and c.op == "insert")
+    assert insert.payload["title"] == "a title"
+    assert "summary" not in insert.payload
+    assert "so_what" not in insert.payload
 
 
 @pytest.mark.asyncio

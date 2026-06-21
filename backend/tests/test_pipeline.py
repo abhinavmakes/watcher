@@ -7,9 +7,15 @@ import pytest
 from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput, EmbeddedArticle
 from app.models.classification import ArticleDomain, ClassificationOutput
-from app.models.cluster import ClusterResult, ExistingCluster
+from app.models.cluster import Cluster, ClusterResult, ExistingCluster
 from app.models.pipeline_run import PipelineRunSummary
-from worker.pipeline import ConnectorSpec, _deduplicate_fetched_articles, run_pipeline
+from app.models.synthesis import SynthesisOutput
+from worker.pipeline import (
+    ConnectorSpec,
+    _build_synthesis_input,
+    _deduplicate_fetched_articles,
+    run_pipeline,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -198,6 +204,7 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
         result: ClusterResult,
         existing_clusters: Sequence[ExistingCluster],
         embedded: Sequence[EmbeddedArticle],
+        new_cluster_syntheses: Sequence[SynthesisOutput | None] | None = None,
     ) -> None:
         cluster_results.append(result)
 
@@ -262,6 +269,7 @@ async def test_run_pipeline_skips_articles_already_in_db(
         result: ClusterResult,
         existing_clusters: Sequence[ExistingCluster],
         embedded: Sequence[EmbeddedArticle],
+        new_cluster_syntheses: Sequence[SynthesisOutput | None] | None = None,
     ) -> None:
         return None
 
@@ -362,3 +370,25 @@ def test_deduplicate_fetched_articles_handles_empty_input() -> None:
 
     assert result.articles == []
     assert result.duplicates_by_source == {}
+
+
+def test_build_synthesis_input_maps_members_and_drops_unresolved_urls() -> None:
+    first = _article("First", source="rss", canonical_url="u-a")
+    second = _article("Second", source="hn", canonical_url="u-b")
+    by_url = {first.canonical_url: first, second.canonical_url: second}
+    cluster = Cluster(
+        centroid=[0.0],
+        member_urls=["u-a", "u-b", "u-missing"],
+        domains=[ArticleDomain.LLMS],
+        key_entities=["anthropic"],
+    )
+
+    result = _build_synthesis_input(cluster, by_url)
+
+    # One SynthesisArticle per resolvable member; the unknown url is dropped, not an error.
+    assert [article.title for article in result.articles] == ["First", "Second"]
+    assert [article.source for article in result.articles] == ["rss", "hn"]
+    assert result.articles[0].content == "Article body"
+    # Cluster carries the unioned domains/entities; synthesis input reuses them as-is.
+    assert result.domains == [ArticleDomain.LLMS]
+    assert result.key_entities == ["anthropic"]

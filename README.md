@@ -4,7 +4,7 @@
 
 Watcher ingests AI/engineering news from many sources, then runs each article through a typed agent pipeline — **classify → embed → entity-anchored event clustering → synthesize → momentum rank** — and serves the result as a live dashboard of "what matters today," grouped by story rather than by feed.
 
-> **Status (Jun 2026):** ingestion + classification + embeddings + clustering are **built and validated on live data**; synthesis, momentum, the API, and the dashboard are in active development; deploying end of June. Auth + RAG chat are planned post-MVP. See [Status](#status).
+> **Status (Jun 2026):** ingestion + classification + embeddings + clustering + synthesis are **built and validated on live data**; momentum, the API, and the dashboard are in active development; deploying end of June. Auth + RAG chat are planned post-MVP. See [Status](#status).
 >
 > _Live demo: coming at deploy._
 
@@ -22,7 +22,7 @@ Staying current in AI means scanning newsletters (a day late, can't query), Twit
 | **Classify** | Claude Haiku 4.5 assigns domains, a relevance score, a noise flag, and **key entities** — in one structured-output call | ✅ |
 | **Embed** | OpenAI `text-embedding-3-small` (768-dim) over a cleaned title+content representation, stored in pgvector | ✅ |
 | **Cluster** | Online single-pass event clustering with a **two-tier, entity-anchored** join rule (below) | ✅ |
-| **Synthesize** | One gated LLM briefing per cluster — *what happened / what it means* | 🔧 in progress |
+| **Synthesize** | One gated LLM briefing per cluster (Claude Sonnet 4.6) — *what happened / what it means* | ✅ |
 | **Momentum** | Recency-weighted growth across sources; stale clusters fade | 🔧 in progress |
 | **Serve** | FastAPI → Next.js dashboard (cards, momentum, domain filters) | 🔧 in progress |
 
@@ -67,7 +67,7 @@ This buys recall on a developing story's many angles *without* lowering the cosi
 
 **Backend:** Python · FastAPI · PydanticAI · uv
 **Data:** Supabase (Postgres + pgvector)
-**Models:** Claude Haiku 4.5 (classification) · OpenAI `text-embedding-3-small` (embeddings) · Gemini 2.5 Flash (synthesis, planned)
+**Models:** Claude Haiku 4.5 (classification) · OpenAI `text-embedding-3-small` (embeddings) · Claude Sonnet 4.6 (synthesis)
 **Frontend:** Next.js (App Router) · Tailwind _(in progress)_
 **Hosting:** Railway (worker + API) · Vercel (frontend)
 
@@ -82,11 +82,12 @@ This buys recall on a developing story's many angles *without* lowering the cosi
 
 | Done | In progress | Planned |
 |---|---|---|
-| Multi-source ingestion + dedup | Synthesis (gated LLM briefings) | GitHub OAuth |
-| Classification (domains, relevance, noise, entities) | Momentum scoring | RAG chat (BYOK) |
-| Embeddings + pgvector | FastAPI endpoints | GitHub Trending / Product Hunt sources |
-| Entity-anchored event clustering | Next.js dashboard + deploy | Retention/prune job |
-| Classifier + clustering evals | | |
+| Multi-source ingestion + dedup | Momentum scoring | GitHub OAuth |
+| Classification (domains, relevance, noise, entities) | FastAPI endpoints | RAG chat (BYOK) |
+| Embeddings + pgvector | Next.js dashboard + deploy | GitHub Trending / Product Hunt sources |
+| Entity-anchored event clustering | | Retention/prune job |
+| Synthesis (gated LLM briefings) | | Synthesis: single_source + re-synthesis |
+| Classifier + clustering evals | | Synthesis eval (LLM-as-judge) |
 
 ## Run locally (backend)
 

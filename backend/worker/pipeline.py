@@ -5,12 +5,15 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from app.agents.classifier import classify_article
+from app.agents.synthesizer import synthesize_cluster
 from app.connectors.base import ArticleConnector
 from app.core.config import settings
 from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput, EmbeddedArticle
 from app.models.classification import ClassificationOutput
+from app.models.cluster import Cluster
 from app.models.pipeline_run import PipelineRunStatus, PipelineRunSummary, SourceFetchStats
+from app.models.synthesis import SynthesisArticle, SynthesisInput, SynthesisOutput
 from app.services.article_store import fetch_existing_canonical_urls, insert_articles
 from app.services.cluster_store import fetch_existing_clusters, persist_cluster_result
 from app.services.clustering import cluster_articles
@@ -121,6 +124,47 @@ async def _embed_articles(
     ]
 
 
+def _build_synthesis_input(cluster: Cluster, by_url: dict[str, ArticleInput]) -> SynthesisInput:
+    articles = [
+        SynthesisArticle(
+            title=by_url[url].title,
+            content=by_url[url].content,
+            source=by_url[url].source,
+        )
+        for url in cluster.member_urls
+        if url in by_url
+    ]
+    return SynthesisInput(
+        articles=articles,
+        key_entities=cluster.key_entities,
+        domains=cluster.domains,
+    )
+
+
+async def _synthesize_new_clusters(
+    new_clusters: Sequence[Cluster],
+    classified: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+) -> list[SynthesisOutput | None]:
+    by_url = {article.canonical_url: article for article, _ in classified}
+    interval = 60 / settings.synthesis_rpm
+    syntheses: list[SynthesisOutput | None] = []
+    for i, cluster in enumerate(new_clusters):
+        if i > 0:
+            await asyncio.sleep(interval)
+        try:
+            output: SynthesisOutput | None = await synthesize_cluster(
+                _build_synthesis_input(cluster, by_url)
+            )
+        except Exception as e:
+            logger.warning(
+                "synthesis_failed",
+                extra={"member_urls": cluster.member_urls, "error": str(e)},
+            )
+            output = None
+        syntheses.append(output)
+    return syntheses
+
+
 async def run_pipeline(
     connector_specs: Sequence[ConnectorSpec],
     gateway: SupabaseGateway | None = None,
@@ -167,9 +211,18 @@ async def run_pipeline(
         )
         existing_clusters = await fetch_existing_clusters(gateway)
         cluster_result = cluster_articles(embedded, existing_clusters)
-        await persist_cluster_result(gateway, cluster_result, existing_clusters, embedded)
+        new_cluster_syntheses = await _synthesize_new_clusters(
+            cluster_result.new_clusters, classified_articles
+        )
+        await persist_cluster_result(
+            gateway, cluster_result, existing_clusters, embedded, new_cluster_syntheses
+        )
         clusters_created = len(cluster_result.new_clusters)
         clusters_updated = len(cluster_result.updated)
+        logger.info(
+            "pipeline_synthesized_clusters",
+            extra={"synthesized": sum(1 for s in new_cluster_syntheses if s is not None)},
+        )
 
     summary = PipelineRunSummary(
         started_at=started_at,
