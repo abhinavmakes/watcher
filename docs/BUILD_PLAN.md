@@ -6,19 +6,21 @@ Build order is risk-first: pipeline with HN + curated RSS → clustering eval �
 
 ## Current checkpoint
 
-Fetch → dedup → classify → embed → persist works end to end against live Supabase:
+Fetch → dedup → classify → embed → cluster → **synthesize** → persist works end to end against live Supabase:
 
 - HN and RSS connectors normalize into `ArticleInput`
 - Worker fetch stage runs connector specs concurrently and records per-source stats
 - Current-run duplicate articles removed by `canonical_url`; already-persisted `canonical_url`s skipped before the LLM (dedup-before-classify)
-- **Classifier agent (`app/agents/classifier.py`) live: Claude Haiku 4.5 via PydanticAI, structured output (`domains`, `relevance_score`, `is_noise`, `reason`)**, with a 50-article blind-labeled eval (`scripts/eval_classifier.py`, PASS at noise precision 0.96 / recall 0.92)
+- **Classifier agent (`app/agents/classifier.py`) live: Claude Haiku 4.5 via PydanticAI, structured output (`domains`, `relevance_score`, `is_noise`, `reason`, `key_entities`)**, with a 50-article blind-labeled eval (`scripts/eval_classifier.py`, PASS at noise precision 0.96 / recall 0.92)
 - **Embedding spine live: `format_embedding_input` (Select-with-tags) → batched `embed_texts` (OpenAI `text-embedding-3-small`, 768-dim) → `articles.embedding` (pgvector); only non-noise articles embedded**
-- `article_store.insert_articles` upserts on `canonical_url` (idempotent across runs), now writing the `embedding` column when a vector exists
+- **Clustering live: entity-anchored two-tier merge (`clustering.py`), running-mean centroids, `key_entities`/`domains` unioned onto clusters (`cluster_store.py`)**
+- **Synthesis live: `app/agents/synthesizer.py` (Claude Sonnet 4.6 via PydanticAI) writes title/summary/so_what onto each new cluster; pipeline assembles `SynthesisInput` from in-run articles, paced by `synthesis_rpm`. New-clusters-only v1 (single_source + updated-cluster re-synth deferred)**
+- `article_store.insert_articles` upserts on `canonical_url` (idempotent across runs), writing the `embedding` column when a vector exists
 - `pipeline_runs` audit row written every execution
-- 61 tests green; ruff and mypy clean
-- Live run verified: 36 classified → 33 embedded → persisted
+- 81 tests green; ruff and mypy clean
+- Live run verified (2026-06-21): 210 classified → 15 clusters → 15/15 synthesized, 0 failures
 
-The next slice is **clustering** — group same-story vectors into stories — then synthesis gating, then momentum. See `docs/NEXT_SESSION.md`.
+The next slice is **momentum** — recency-weighted growth scoring + stale marking — then the API, then frontend. See `docs/NEXT_SESSION.md`.
 
 ## Week 1: Data pipeline + backend core
 
@@ -109,15 +111,15 @@ The next slice is **clustering** — group same-story vectors into stories — t
 - Eval: `scripts/eval_clustering.py` over a labeled fixture confirms cosine separation (clean: different ≤0.32, same ≥0.61). Remaining: expand the fixture with same-org hard negatives to formally bound the entity tier.
 
 **Synthesis agent**
-- Implement synthesizer with PydanticAI (Gemini 2.5 Flash)
+- Implement synthesizer with PydanticAI (Anthropic Claude — reuse the wired classifier stack, no second provider)
 - Runs only on clusters that changed this pipeline run and pass the synthesis gate
 - Synthesis gate: cluster has 2+ articles, or one article from a high-signal source such as a curated RSS feed, official release blog, or research blog
 - One-article items are labeled with `signal_type="single_source"`; low-signal solo items must not use language implying broad momentum
-- Output: title, summary, so_what, key_entities
+- Output: title, summary, so_what (key_entities already come from the classifier and are unioned onto the cluster upstream — synthesis doesn't re-emit them)
 
 **Synthesis eval (LLM-as-judge)**
 - Hand-pick 10-15 real clusters and run the synthesizer over them
-- Add `scripts/eval_synthesis.py`: passes each (cluster, synthesis) pair to a judge model (Gemini 2.5 Flash with a fixed rubric) scoring factuality (claims grounded in source articles), no-hedging, and "so what" specificity on a 1-5 scale
+- Add `scripts/eval_synthesis.py`: passes each (cluster, synthesis) pair to a judge model (Claude with a fixed rubric) scoring factuality (claims grounded in source articles), no-hedging, and "so what" specificity on a 1-5 scale
 - Store rubric, judge prompt, and per-cluster scores in the script output so results are reproducible
 - Target: mean factuality ≥ 4, no item with factuality < 3. Iterate on the synthesizer prompt or gating rules if the bar is missed.
 
@@ -315,7 +317,7 @@ The next slice is **clustering** — group same-story vectors into stories — t
 
 **GitHub Trending scraper breaks:** Treat GitHub as a best-effort connector. If scraping becomes brittle, fall back to the GitHub Search API for recently active repositories or launch with HN + curated RSS. Two high-signal source classes are enough for the MVP demo if clustering and synthesis are strong.
 
-**Clustering quality is poor:** Start with 0.85 for existing cluster joins and 0.83 for new orphan clusters, then validate with `scripts/eval_clustering.py` before frontend work. Test roughly 50 article pairs and manually label at least 10 positive and 10 negative examples. If clustering is still bad, raise thresholds and tolerate over-splitting; broad domain-only grouping is only a last-resort demo fallback.
+**Clustering quality is poor:** (Shipped values are 0.78 existing / 0.75 new + a 0.65 entity-anchored tier — the originally-planned 0.85/0.83 over-split.) Validate with `scripts/eval_clustering.py` before frontend work. Test roughly 50 article pairs and manually label at least 10 positive and 10 negative examples. If clustering is still bad, raise thresholds and tolerate over-splitting; broad domain-only grouping is only a last-resort demo fallback.
 
 **Synthesis overstates weak signals:** Gate synthesis. Only synthesize clusters with 2+ articles or one article from a high-signal source. Label all one-article cards as "single-source signal" and avoid wording that implies broad community traction.
 

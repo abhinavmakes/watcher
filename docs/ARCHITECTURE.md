@@ -106,35 +106,44 @@ Both deploy from the same monorepo on Railway. Railway supports multiple service
 
 4. CLASSIFY (PydanticAI agent, Claude Haiku 4.5)
    Input: ArticleInput
-   Output: ClassifiedArticle {
-     domains: list[str],       # e.g. ["ai_agents", "python", "open_source"]
+   Output: ClassificationOutput {
+     domains: list[str],       # 0-3 of ArticleDomain, e.g. ["ai_agents", "python"]
      relevance_score: float,   # 0.0 - 1.0, how relevant to tech/AI
-     is_noise: bool            # true = skip (press releases, spam, off-topic)
+     is_noise: bool,           # true = skip (press releases, spam, off-topic)
+     reason: str,              # one factual sentence explaining the decision
+     key_entities: list[str]   # normalized lowercase named entities, <=8; anchors clustering
    }
    Articles with is_noise=true are stored but excluded from clustering.
 
-5. EMBED (Google text-embedding-005)
-   Input: title + whole article content, capped to the configured embedding limit
+5. EMBED (OpenAI text-embedding-3-small, 768-dim)
+   Input: title + content (capped to embedding_max_content_chars) + tags
    Output: vector(768)
-   Stored in pgvector column on the articles table.
+   Stored in the pgvector `embedding` column on the articles table.
+   `format_embedding_input` owns the text shape; `embed_texts` batches calls.
 
-6. CLUSTER (PydanticAI agent + cosine similarity)
-   Two-phase process:
-   a) Semantic grouping: compute pairwise cosine similarity between new
-     articles and existing cluster centroids. Articles with similarity
-      > 0.85 join existing clusters. Remaining articles are grouped among
-      themselves using agglomerative clustering (scipy) with a 0.83 similarity
-      threshold. Both thresholds are configurable via environment variables.
-   b) Cluster naming: for new clusters, an LLM call generates a title
-      and validates the grouping makes sense. Uses Flash-Lite.
+6. CLUSTER (pure-python cosine + entity anchoring — no LLM, no scipy)
+   Two passes in `app/services/clustering.py`:
+   a) Join existing clusters: for each article, find its best-matching active
+      cluster centroid. Two-tier merge rule (`_joins`): cosine >= 0.78 OR
+      (cosine >= 0.65 AND shares a key entity).
+   b) Form new clusters among the orphans with the same rule at the 0.75 tier.
+      A forming group that never gains a 2nd member is a true orphan (dropped).
+   Thresholds (config.py): existing 0.78 / new 0.75 / entity 0.65. The entity
+   tier (classifier's key_entities) gives recall on same-story coverage without
+   lowering the cosine floor for unrelated articles.
+
+   Provisional title = the highest-relevance member's title (set in
+   persist_cluster_result); synthesis overwrites it in stage 7.
 
    Output: ClusterResult {
-     updated_clusters: list[ClusterUpdate],
-     new_clusters: list[NewCluster],
-     orphans: list[ArticleID]   # articles that don't fit anywhere
+     new_clusters: list[Cluster],
+     updated: dict[cluster_id, list[canonical_url]],  # who joined which existing cluster
+     orphans: list[canonical_url]   # singletons that didn't fit anywhere
    }
 
-7. SYNTHESIZE (PydanticAI agent, Gemini 2.5 Flash)
+7. SYNTHESIZE (PydanticAI agent, Anthropic Claude)
+   Reuses the already-wired Anthropic stack (same provider as CLASSIFY) rather
+   than a second provider — chosen for speed-to-ship. Model in `synthesis_model`.
    Runs ONLY on clusters that changed this pipeline run and pass the
    synthesis gate:
    - clusters with 2+ articles
@@ -145,13 +154,12 @@ Both deploy from the same monorepo on Railway. Railway supports multiple service
    not get language implying broad community momentum.
 
    Input: cluster title + all article contents in the cluster
-   Output: Synthesis {
-     title: str,          # may refine the auto-generated title
+   Output: SynthesisOutput {
+     title: str,          # overwrites the provisional title
      summary: str,        # 2-3 sentence factual summary
-     so_what: str,        # 1-2 sentence editorial take
-     key_entities: list[str]
+     so_what: str         # 1-2 sentence editorial take
    }
-   This is the product's voice. Uses the better model (Flash, not Lite).
+   This is the product's voice.
 
 8. SCORE MOMENTUM
    Not an agent. Pure math.

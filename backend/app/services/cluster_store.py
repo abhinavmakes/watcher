@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from app.core.supabase import SupabaseGateway
 from app.models.article import EmbeddedArticle
 from app.models.cluster import ClusterResult, ExistingCluster
+from app.models.synthesis import SynthesisOutput
 
 # postgREST sends `in.(...)` filters in the request URL; long canonical URLs overflow the
 # gateway's URL-length limit, so query in batches.
@@ -95,6 +96,7 @@ async def persist_cluster_result(
     result: ClusterResult,
     existing_clusters: Sequence[ExistingCluster],
     embedded: Sequence[EmbeddedArticle],
+    new_cluster_syntheses: Sequence[SynthesisOutput | None] | None = None,
 ) -> None:
     by_url = {item.canonical_url: item for item in embedded}
     existing_by_id = {cluster.id: cluster for cluster in existing_clusters}
@@ -106,16 +108,24 @@ async def persist_cluster_result(
 
     article_ids = await _fetch_article_ids(gateway, member_urls)
 
-    for cluster in result.new_clusters:
+    for index, cluster in enumerate(result.new_clusters):
+        synthesis = (
+            new_cluster_syntheses[index] if new_cluster_syntheses is not None else None
+        )
+        # Synthesis title names the actual event; fall back to the highest-relevance
+        # member headline when synthesis is unavailable (failed or skipped).
         title_url = max(cluster.member_urls, key=lambda url: by_url[url].relevance)
-        row = {
-            "title": by_url[title_url].title,
+        row: dict[str, object] = {
+            "title": synthesis.title if synthesis is not None else by_url[title_url].title,
             "centroid": cluster.centroid,
             "domains": [str(domain) for domain in cluster.domains],
             "key_entities": cluster.key_entities,
             "article_count": len(cluster.member_urls),
             "signal_type": "cluster",
         }
+        if synthesis is not None:
+            row["summary"] = synthesis.summary
+            row["so_what"] = synthesis.so_what
         insert_result = await gateway.table("clusters").insert(row).execute()
         new_id = insert_result.data[0]["id"]
         await _link_members(gateway, new_id, cluster.member_urls, article_ids)
