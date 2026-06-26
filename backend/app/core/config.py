@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     # merge): catches same-story coverage that sits below the cosine-only thresholds.
     cluster_entity_similarity_threshold: float = Field(default=0.65, ge=0.0, le=1.0)
     momentum_stale_hours: int = Field(default=48, ge=1)
+    momentum_half_life_hours: float = Field(default=24.0, gt=0)
     high_signal_source_domains: str = (
         "openai.com,anthropic.com,ai.googleblog.com,huggingface.co,fastapi.tiangolo.com"
     )

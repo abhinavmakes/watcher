@@ -95,3 +95,6 @@ def test_settings_validates_bounds() -> None:
 
     with pytest.raises(ValidationError):
         Settings(pipeline_interval_minutes=0)
+
+    with pytest.raises(ValidationError):
+        Settings(momentum_half_life_hours=0)

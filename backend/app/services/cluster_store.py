@@ -1,5 +1,6 @@
 import json
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from app.core.supabase import SupabaseGateway
 from app.models.article import EmbeddedArticle
@@ -17,6 +18,14 @@ def _parse_vector(raw: object) -> list[float]:
     if not isinstance(values, (list, tuple)):
         raise ValueError(f"Unexpected vector payload: {type(values)!r}")
     return [float(x) for x in values]
+
+
+def _parse_timestamp(raw: str) -> datetime:
+    """postgREST returns timestamptz as an ISO string; normalize to an aware UTC datetime."""
+    parsed = datetime.fromisoformat(raw)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed
 
 
 def _update_centroid(
@@ -52,6 +61,44 @@ async def fetch_existing_clusters(gateway: SupabaseGateway) -> list[ExistingClus
             )
         )
     return clusters
+
+
+async def fetch_active_cluster_arrivals(
+    gateway: SupabaseGateway,
+) -> dict[str, list[datetime]]:
+    """Per active cluster, its members' ``added_at`` arrival times — the input momentum
+    scores. Stale clusters are excluded; momentum only re-ranks the live feed."""
+    active = await gateway.table("clusters").select("id").eq("status", "active").execute()
+    arrivals: dict[str, list[datetime]] = {row["id"]: [] for row in active.data}
+    cluster_ids = list(arrivals)
+    for start in range(0, len(cluster_ids), _IN_FILTER_BATCH_SIZE):
+        batch = cluster_ids[start : start + _IN_FILTER_BATCH_SIZE]
+        result = await (
+            gateway.table("cluster_articles")
+            .select("cluster_id, added_at")
+            .in_("cluster_id", batch)
+            .execute()
+        )
+        for row in result.data:
+            cluster_id = row["cluster_id"]
+            added_at = row.get("added_at")
+            if cluster_id in arrivals and added_at is not None:
+                arrivals[cluster_id].append(_parse_timestamp(added_at))
+    return arrivals
+
+
+async def update_cluster_momentum(
+    gateway: SupabaseGateway,
+    cluster_id: str,
+    momentum_score: float,
+    status: str,
+) -> None:
+    await (
+        gateway.table("clusters")
+        .update({"momentum_score": momentum_score, "status": status})
+        .eq("id", cluster_id)
+        .execute()
+    )
 
 
 async def _fetch_article_ids(

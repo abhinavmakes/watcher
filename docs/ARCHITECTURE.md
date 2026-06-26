@@ -162,15 +162,15 @@ Both deploy from the same monorepo on Railway. Railway supports multiple service
    This is the product's voice.
 
 8. SCORE MOMENTUM
-   Not an agent. Pure math.
-   For each cluster, count articles in time buckets:
-   - last 6 hours
-   - 6-24 hours ago
-   - 24-48 hours ago
-   Momentum = weighted_recent / weighted_total
-   Weights: [3, 1, 0.5] for [6h, 6-24h, 24-48h]
-   Normalized to 0-100 scale.
-   Clusters with no new articles in 48h marked as "stale."
+   Not an agent. Pure math. Runs over ALL active clusters, not just those
+   touched this run — a cluster decays / goes stale by elapsed time alone.
+   For each cluster, sum a time-decay weight over its members' arrival times
+   (cluster_articles.added_at):
+     momentum = Σ 0.5 ** (age_hours / MOMENTUM_HALF_LIFE_HOURS)   # half-life 24h
+   Sum (not mean) so a cluster that keeps gaining members outranks a stale one.
+   Stored raw (≈ effective recent-article count); 0-100 normalization is applied
+   at the API/display layer, not here.
+   Clusters whose newest member is older than MOMENTUM_STALE_HOURS (48h) → 'stale'.
 
    Stale does not mean deleted. The ingestion pipeline should mark freshness
    state only; destructive retention cleanup is a separate operational job so
@@ -179,7 +179,8 @@ Both deploy from the same monorepo on Railway. Railway supports multiple service
 
 9. RECORD PIPELINE RUN
    Insert into pipeline_runs: {started_at, completed_at, status,
-   articles_fetched, articles_classified, clusters_updated, clusters_created,
+   articles_fetched, articles_classified, articles_skipped_known,
+   clusters_updated, clusters_created, clusters_scored, clusters_stale,
    source_stats}
 ```
 
@@ -361,7 +362,7 @@ CREATE TABLE clusters (
   title           TEXT NOT NULL,
   summary         TEXT,                 -- factual summary from synthesis
   so_what         TEXT,                 -- editorial take from synthesis
-  momentum_score  FLOAT DEFAULT 0.0,   -- 0-100
+  momentum_score  FLOAT DEFAULT 0.0,   -- raw time-decay sum; 0-100 normalized at API
   article_count   INT DEFAULT 0,
   status          TEXT DEFAULT 'active', -- 'active', 'stale'
   signal_type     TEXT DEFAULT 'cluster', -- 'cluster', 'single_source'
@@ -427,12 +428,15 @@ CREATE TABLE pipeline_runs (
   started_at          TIMESTAMPTZ NOT NULL,
   completed_at        TIMESTAMPTZ,
   status              TEXT DEFAULT 'running', -- 'running', 'completed', 'failed'
-  articles_fetched    INT DEFAULT 0,
-  articles_classified INT DEFAULT 0,
-  clusters_updated    INT DEFAULT 0,
-  clusters_created    INT DEFAULT 0,
-  source_stats        JSONB DEFAULT '{}', -- per-connector returned/duplicate/classified/noise/error stats
-  error_message       TEXT
+  articles_fetched       INT DEFAULT 0,
+  articles_classified    INT DEFAULT 0,
+  articles_skipped_known INT DEFAULT 0,
+  clusters_updated       INT DEFAULT 0,
+  clusters_created       INT DEFAULT 0,
+  clusters_scored        INT DEFAULT 0,
+  clusters_stale         INT DEFAULT 0,
+  source_stats           JSONB DEFAULT '{}', -- per-connector returned/duplicate/classified/noise/error stats
+  error_message          TEXT
 );
 
 CREATE INDEX idx_pipeline_runs_status ON pipeline_runs (completed_at DESC);
@@ -602,6 +606,7 @@ PIPELINE_INTERVAL_MINUTES=30
 CLUSTER_EXISTING_SIMILARITY_THRESHOLD=0.85
 CLUSTER_NEW_SIMILARITY_THRESHOLD=0.83
 MOMENTUM_STALE_HOURS=48
+MOMENTUM_HALF_LIFE_HOURS=24         # decay half-life (hours) for momentum scoring
 HIGH_SIGNAL_SOURCE_DOMAINS=        # comma-separated domains allowed to get solo synthesis
 ```
 

@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -11,8 +12,10 @@ from app.models.synthesis import SynthesisOutput
 from app.services.cluster_store import (
     _parse_vector,
     _update_centroid,
+    fetch_active_cluster_arrivals,
     fetch_existing_clusters,
     persist_cluster_result,
+    update_cluster_momentum,
 )
 
 
@@ -285,3 +288,56 @@ async def test_persist_is_a_noop_when_nothing_to_link() -> None:
     await persist_cluster_result(cast(SupabaseGateway, gateway), result, [], [])
 
     assert gateway.calls == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_active_cluster_arrivals_groups_added_at_by_cluster() -> None:
+    gateway = RecordingGateway(
+        {
+            ("clusters", "select"): [{"id": "c1"}, {"id": "c2"}],
+            ("cluster_articles", "select"): [
+                {"cluster_id": "c1", "added_at": "2026-06-25T10:00:00+00:00"},
+                {"cluster_id": "c1", "added_at": "2026-06-25T08:00:00+00:00"},
+                {"cluster_id": "c2", "added_at": "2026-06-24T10:00:00+00:00"},
+            ],
+        }
+    )
+
+    arrivals = await fetch_active_cluster_arrivals(cast(SupabaseGateway, gateway))
+
+    assert arrivals == {
+        "c1": [
+            datetime(2026, 6, 25, 10, tzinfo=UTC),
+            datetime(2026, 6, 25, 8, tzinfo=UTC),
+        ],
+        "c2": [datetime(2026, 6, 24, 10, tzinfo=UTC)],
+    }
+    # Only active clusters are scanned, then their members are pulled by cluster_id.
+    assert gateway.calls[0].filters == {"status": "active"}
+    assert gateway.calls[1].filters == {"cluster_id": ["c1", "c2"]}
+
+
+@pytest.mark.asyncio
+async def test_fetch_active_cluster_arrivals_keeps_memberless_clusters() -> None:
+    gateway = RecordingGateway(
+        {("clusters", "select"): [{"id": "c1"}], ("cluster_articles", "select"): []}
+    )
+
+    arrivals = await fetch_active_cluster_arrivals(cast(SupabaseGateway, gateway))
+
+    assert arrivals == {"c1": []}
+
+
+@pytest.mark.asyncio
+async def test_update_cluster_momentum_writes_score_and_status() -> None:
+    gateway = RecordingGateway()
+
+    await update_cluster_momentum(
+        cast(SupabaseGateway, gateway), "c1", momentum_score=3.5, status="stale"
+    )
+
+    update = gateway.calls[0]
+    assert update.table == "clusters"
+    assert update.op == "update"
+    assert update.payload == {"momentum_score": 3.5, "status": "stale"}
+    assert update.filters == {"id": "c1"}

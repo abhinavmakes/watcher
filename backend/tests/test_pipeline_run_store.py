@@ -48,6 +48,8 @@ async def test_insert_pipeline_run_maps_summary_to_pipeline_runs_table_row() -> 
         articles_skipped_known=5,
         clusters_updated=0,
         clusters_created=0,
+        clusters_scored=6,
+        clusters_stale=2,
         source_stats={
             "hn": SourceFetchStats(returned=10, duplicates=0),
             "rss": SourceFetchStats(returned=2, duplicates=1, error="feed unavailable"),
@@ -68,6 +70,8 @@ async def test_insert_pipeline_run_maps_summary_to_pipeline_runs_table_row() -> 
         "articles_skipped_known": 5,
         "clusters_updated": 0,
         "clusters_created": 0,
+        "clusters_scored": 6,
+        "clusters_stale": 2,
         "source_stats": {
             "hn": {"returned": 10, "duplicates": 0, "error": None},
             "rss": {

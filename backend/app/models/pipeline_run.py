@@ -25,5 +25,7 @@ class PipelineRunSummary(BaseModel):
     articles_skipped_known: int = 0
     clusters_updated: int = 0
     clusters_created: int = 0
+    clusters_scored: int = 0
+    clusters_stale: int = 0
     source_stats: dict[str, SourceFetchStats] = Field(default_factory=dict)
     error_message: str | None = None
