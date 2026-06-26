@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import cast
 
 import pytest
@@ -211,6 +211,11 @@ async def test_run_pipeline_inserts_deduplicated_articles_when_gateway_is_provid
     monkeypatch.setattr("worker.pipeline.fetch_existing_clusters", fake_fetch_existing_clusters)
     monkeypatch.setattr("worker.pipeline.persist_cluster_result", fake_persist_cluster_result)
 
+    async def fake_fetch_arrivals(gateway: SupabaseGateway) -> dict[str, list[datetime]]:
+        return {}
+
+    monkeypatch.setattr("worker.pipeline.fetch_active_cluster_arrivals", fake_fetch_arrivals)
+
     summary = await run_pipeline(
         [
             ConnectorSpec(name="hn", connector=FakeConnector([first_article]), limit=10),
@@ -275,6 +280,11 @@ async def test_run_pipeline_skips_articles_already_in_db(
 
     monkeypatch.setattr("worker.pipeline.fetch_existing_clusters", fake_fetch_existing_clusters)
     monkeypatch.setattr("worker.pipeline.persist_cluster_result", fake_persist_cluster_result)
+
+    async def fake_fetch_arrivals(gateway: SupabaseGateway) -> dict[str, list[datetime]]:
+        return {}
+
+    monkeypatch.setattr("worker.pipeline.fetch_active_cluster_arrivals", fake_fetch_arrivals)
 
     summary = await run_pipeline(
         [ConnectorSpec(name="hn", connector=FakeConnector([known, fresh]), limit=10)],
@@ -392,3 +402,70 @@ def test_build_synthesis_input_maps_members_and_drops_unresolved_urls() -> None:
     # Cluster carries the unioned domains/entities; synthesis input reuses them as-is.
     assert result.domains == [ArticleDomain.LLMS]
     assert result.key_entities == ["anthropic"]
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_scores_momentum_and_marks_stale(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_insert_articles(
+        gateway: SupabaseGateway,
+        articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+        embeddings: dict[str, list[float]] | None = None,
+    ) -> int:
+        return len(articles)
+
+    async def fake_fetch_existing(
+        gateway: SupabaseGateway, canonical_urls: Sequence[str]
+    ) -> set[str]:
+        return set()
+
+    async def fake_insert_pipeline_run(
+        gateway: SupabaseGateway, summary: PipelineRunSummary
+    ) -> None:
+        return None
+
+    async def fake_fetch_existing_clusters(gateway: SupabaseGateway) -> list[ExistingCluster]:
+        return []
+
+    async def fake_persist_cluster_result(
+        gateway: SupabaseGateway,
+        result: ClusterResult,
+        existing_clusters: Sequence[ExistingCluster],
+        embedded: Sequence[EmbeddedArticle],
+        new_cluster_syntheses: Sequence[SynthesisOutput | None] | None = None,
+    ) -> None:
+        return None
+
+    async def fake_fetch_arrivals(gateway: SupabaseGateway) -> dict[str, list[datetime]]:
+        now = datetime.now(UTC)
+        return {"fresh": [now], "stale-one": [now - timedelta(hours=72)]}
+
+    captured: list[tuple[str, float, str]] = []
+
+    async def fake_update(
+        gateway: SupabaseGateway, cluster_id: str, momentum_score: float, status: str
+    ) -> None:
+        captured.append((cluster_id, momentum_score, status))
+
+    monkeypatch.setattr("worker.pipeline.insert_articles", fake_insert_articles)
+    monkeypatch.setattr("worker.pipeline.fetch_existing_canonical_urls", fake_fetch_existing)
+    monkeypatch.setattr("worker.pipeline.insert_pipeline_run", fake_insert_pipeline_run)
+    monkeypatch.setattr("worker.pipeline.fetch_existing_clusters", fake_fetch_existing_clusters)
+    monkeypatch.setattr("worker.pipeline.persist_cluster_result", fake_persist_cluster_result)
+    monkeypatch.setattr("worker.pipeline.fetch_active_cluster_arrivals", fake_fetch_arrivals)
+    monkeypatch.setattr("worker.pipeline.update_cluster_momentum", fake_update)
+
+    summary = await run_pipeline(
+        [ConnectorSpec(name="hn", connector=FakeConnector([_article("HN story")]), limit=10)],
+        gateway=cast(SupabaseGateway, object()),
+    )
+
+    by_id = {cid: (score, status) for cid, score, status in captured}
+    assert by_id["stale-one"][1] == "stale"
+    assert by_id["fresh"][1] == "active"
+    # Sum-of-decay: a fresh member outscores one that is 72h old.
+    assert by_id["fresh"][0] > by_id["stale-one"][0]
+    # Both counts land in the run summary for the pipeline_runs audit row.
+    assert summary.clusters_scored == 2
+    assert summary.clusters_stale == 1

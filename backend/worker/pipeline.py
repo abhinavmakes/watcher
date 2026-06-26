@@ -15,9 +15,15 @@ from app.models.cluster import Cluster
 from app.models.pipeline_run import PipelineRunStatus, PipelineRunSummary, SourceFetchStats
 from app.models.synthesis import SynthesisArticle, SynthesisInput, SynthesisOutput
 from app.services.article_store import fetch_existing_canonical_urls, insert_articles
-from app.services.cluster_store import fetch_existing_clusters, persist_cluster_result
+from app.services.cluster_store import (
+    fetch_active_cluster_arrivals,
+    fetch_existing_clusters,
+    persist_cluster_result,
+    update_cluster_momentum,
+)
 from app.services.clustering import cluster_articles
 from app.services.embeddings import embed_texts, format_embedding_input
+from app.services.momentum import is_stale, score_momentum
 from app.services.pipeline_run_store import insert_pipeline_run
 
 logger = logging.getLogger(__name__)
@@ -53,6 +59,12 @@ class FetchResult:
 class DedupResult:
     articles: list[ArticleInput]
     duplicates_by_source: dict[str, int]
+
+
+@dataclass(frozen=True)
+class MomentumStats:
+    scored: int
+    stale: int
 
 
 async def _fetch_from_connector(spec: ConnectorSpec) -> FetchResult:
@@ -165,6 +177,26 @@ async def _synthesize_new_clusters(
     return syntheses
 
 
+async def _score_momentum(gateway: SupabaseGateway, now: datetime) -> MomentumStats:
+    """Recompute momentum + staleness for every active cluster, not just those touched this
+    run: a cluster with no new members still decays and can cross the stale line by elapsed
+    time alone, so the sweep has to visit all of them. Returns scored + stale counts."""
+    arrivals_by_cluster = await fetch_active_cluster_arrivals(gateway)
+    stale_count = 0
+    for cluster_id, arrivals in arrivals_by_cluster.items():
+        score = score_momentum(arrivals, now, settings.momentum_half_life_hours)
+        stale = is_stale(arrivals, now, settings.momentum_stale_hours)
+        if stale:
+            stale_count += 1
+        await update_cluster_momentum(
+            gateway,
+            cluster_id,
+            momentum_score=score,
+            status="stale" if stale else "active",
+        )
+    return MomentumStats(scored=len(arrivals_by_cluster), stale=stale_count)
+
+
 async def run_pipeline(
     connector_specs: Sequence[ConnectorSpec],
     gateway: SupabaseGateway | None = None,
@@ -202,6 +234,8 @@ async def run_pipeline(
     }
     clusters_created = 0
     clusters_updated = 0
+    clusters_scored = 0
+    clusters_stale = 0
     if gateway is not None:
         embedded = await _embed_articles(classified_articles)
         await insert_articles(
@@ -223,6 +257,13 @@ async def run_pipeline(
             "pipeline_synthesized_clusters",
             extra={"synthesized": sum(1 for s in new_cluster_syntheses if s is not None)},
         )
+        momentum = await _score_momentum(gateway, datetime.now(UTC))
+        clusters_scored = momentum.scored
+        clusters_stale = momentum.stale
+        logger.info(
+            "pipeline_scored_momentum",
+            extra={"clusters_scored": clusters_scored, "clusters_stale": clusters_stale},
+        )
 
     summary = PipelineRunSummary(
         started_at=started_at,
@@ -233,6 +274,8 @@ async def run_pipeline(
         articles_skipped_known=articles_skipped_known,
         clusters_created=clusters_created,
         clusters_updated=clusters_updated,
+        clusters_scored=clusters_scored,
+        clusters_stale=clusters_stale,
         source_stats=source_stats,
     )
 

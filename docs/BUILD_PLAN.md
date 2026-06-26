@@ -15,12 +15,13 @@ Fetch → dedup → classify → embed → cluster → **synthesize** → persis
 - **Embedding spine live: `format_embedding_input` (Select-with-tags) → batched `embed_texts` (OpenAI `text-embedding-3-small`, 768-dim) → `articles.embedding` (pgvector); only non-noise articles embedded**
 - **Clustering live: entity-anchored two-tier merge (`clustering.py`), running-mean centroids, `key_entities`/`domains` unioned onto clusters (`cluster_store.py`)**
 - **Synthesis live: `app/agents/synthesizer.py` (Claude Sonnet 4.6 via PydanticAI) writes title/summary/so_what onto each new cluster; pipeline assembles `SynthesisInput` from in-run articles, paced by `synthesis_rpm`. New-clusters-only v1 (single_source + updated-cluster re-synth deferred)**
+- **Momentum live: `app/services/momentum.py` (pure decay-sum scorer + stale flag) re-scores ALL active clusters each run via a DB pass over members' `added_at`; writes `clusters.momentum_score` (raw; 0-100 deferred to the API) + `status`, and records `clusters_scored`/`clusters_stale` on `pipeline_runs`. Verified live (2026-06-26) over 15 clusters via `scripts/score_momentum.py`**
 - `article_store.insert_articles` upserts on `canonical_url` (idempotent across runs), writing the `embedding` column when a vector exists
 - `pipeline_runs` audit row written every execution
-- 81 tests green; ruff and mypy clean
+- 93 tests green; ruff and mypy clean
 - Live run verified (2026-06-21): 210 classified → 15 clusters → 15/15 synthesized, 0 failures
 
-The next slice is **momentum** — recency-weighted growth scoring + stale marking — then the API, then frontend. See `docs/NEXT_SESSION.md`.
+The next slice is the **API** — `GET /clusters` (sorted by momentum, 0-100 normalized at read time) and `GET /clusters/:id` — then the frontend.
 
 ## Week 1: Data pipeline + backend core
 
@@ -123,10 +124,9 @@ The next slice is **momentum** — recency-weighted growth scoring + stale marki
 - Store rubric, judge prompt, and per-cluster scores in the script output so results are reproducible
 - Target: mean factuality ≥ 4, no item with factuality < 3. Iterate on the synthesizer prompt or gating rules if the bar is missed.
 
-**Momentum scoring**
-- Count articles per cluster in time buckets (6h, 24h, 48h)
-- Weighted formula, normalize to 0-100
-- Mark stale clusters (no new articles in 48h)
+**Momentum scoring** *(done — shipped as a time-decay sum, not fixed buckets; see Current checkpoint)*
+- Recency-weighted decay sum over member arrival times (half-life 24h), summed so growth counts; raw stored, 0-100 normalized at the API
+- Mark stale clusters (newest member older than 48h)
 - Do not delete old articles during ingestion; freshness state and retention cleanup are separate concerns
 
 **Pipeline orchestration**
