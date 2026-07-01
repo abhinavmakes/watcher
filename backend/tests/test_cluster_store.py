@@ -13,24 +13,62 @@ from app.services.cluster_store import (
     _parse_vector,
     _update_centroid,
     fetch_active_cluster_arrivals,
+    fetch_cluster_detail,
+    fetch_clusters_page,
     fetch_existing_clusters,
     persist_cluster_result,
     update_cluster_momentum,
 )
 
 
+def _card_row(cluster_id: str = "c1", status: str = "active") -> dict[str, Any]:
+    return {
+        "id": cluster_id,
+        "title": "Anthropic ships a 1M-token context window",
+        "summary": None,
+        "so_what": None,
+        "momentum_score": 5.0,
+        "domains": ["llms"],
+        "key_entities": ["anthropic"],
+        "article_count": 3,
+        "status": status,
+    }
+
+
 class RecordingQuery:
-    def __init__(self, table: str, recorder: list[Any], responses: dict[tuple[str, str], Any]):
+    def __init__(
+        self,
+        table: str,
+        recorder: list[Any],
+        responses: dict[tuple[str, str], Any],
+        counts: dict[tuple[str, str], int],
+    ):
         self._table = table
         self._rec = recorder
         self._responses = responses
+        self._counts = counts
         self._op = "select"
         self._payload: Any = None
         self._filters: dict[str, Any] = {}
         self._on_conflict: str | None = None
+        self._order: tuple[str, bool] | None = None
+        self._range: tuple[int, int] | None = None
+        self._contains: dict[str, Any] = {}
 
-    def select(self, columns: str) -> "RecordingQuery":
+    def select(self, columns: str, count: str | None = None) -> "RecordingQuery":
         self._op = "select"
+        return self
+
+    def contains(self, column: str, values: Any) -> "RecordingQuery":
+        self._contains[column] = values
+        return self
+
+    def order(self, column: str, desc: bool = False) -> "RecordingQuery":
+        self._order = (column, desc)
+        return self
+
+    def range(self, start: int, end: int) -> "RecordingQuery":
+        self._range = (start, end)
         return self
 
     def eq(self, column: str, value: Any) -> "RecordingQuery":
@@ -67,18 +105,29 @@ class RecordingQuery:
                 payload=self._payload,
                 filters=self._filters,
                 on_conflict=self._on_conflict,
+                order=self._order,
+                range=self._range,
+                contains=self._contains,
             )
         )
-        return SimpleNamespace(data=self._responses.get((self._table, self._op), []))
+        return SimpleNamespace(
+            data=self._responses.get((self._table, self._op), []),
+            count=self._counts.get((self._table, self._op)),
+        )
 
 
 class RecordingGateway:
-    def __init__(self, responses: dict[tuple[str, str], Any] | None = None) -> None:
+    def __init__(
+        self,
+        responses: dict[tuple[str, str], Any] | None = None,
+        counts: dict[tuple[str, str], int] | None = None,
+    ) -> None:
         self.calls: list[Any] = []
         self._responses = responses or {}
+        self._counts = counts or {}
 
     def table(self, table_name: str) -> RecordingQuery:
-        return RecordingQuery(table_name, self.calls, self._responses)
+        return RecordingQuery(table_name, self.calls, self._responses, self._counts)
 
 
 def _embedded(
@@ -234,9 +283,7 @@ async def test_persist_writes_synthesis_onto_new_cluster() -> None:
         so_what="Revisit whether your RAG layer still earns its complexity.",
     )
 
-    await persist_cluster_result(
-        cast(SupabaseGateway, gateway), result, [], embedded, [synthesis]
-    )
+    await persist_cluster_result(cast(SupabaseGateway, gateway), result, [], embedded, [synthesis])
 
     insert = next(c for c in gateway.calls if c.table == "clusters" and c.op == "insert")
     # Synthesis title overrides the member-headline fallback; summary/so_what are written.
@@ -341,3 +388,74 @@ async def test_update_cluster_momentum_writes_score_and_status() -> None:
     assert update.op == "update"
     assert update.payload == {"momentum_score": 3.5, "status": "stale"}
     assert update.filters == {"id": "c1"}
+
+
+@pytest.mark.asyncio
+async def test_fetch_clusters_page_hides_stale_orders_by_raw_and_paginates() -> None:
+    row = _card_row()
+    gateway = RecordingGateway({("clusters", "select"): [row]}, counts={("clusters", "select"): 1})
+
+    rows, total = await fetch_clusters_page(
+        cast(SupabaseGateway, gateway), limit=20, offset=0, domain=None
+    )
+
+    assert rows == [row]
+    assert total == 1  # the filtered count, not len(page)
+    call = gateway.calls[0]
+    assert call.filters == {"status": "active"}  # stale hidden at the store
+    assert call.order == ("momentum_score", True)  # raw score DESC (indexed)
+    assert call.range == (0, 19)  # postgREST range end is inclusive
+
+
+@pytest.mark.asyncio
+async def test_fetch_clusters_page_filters_by_domain_when_given() -> None:
+    gateway = RecordingGateway({("clusters", "select"): []}, counts={("clusters", "select"): 0})
+
+    await fetch_clusters_page(cast(SupabaseGateway, gateway), limit=10, offset=0, domain="llms")
+
+    assert gateway.calls[0].contains == {"domains": ["llms"]}  # array superset match
+
+
+@pytest.mark.asyncio
+async def test_fetch_cluster_detail_returns_none_for_unknown_id() -> None:
+    gateway = RecordingGateway({("clusters", "select"): []})
+
+    result = await fetch_cluster_detail(cast(SupabaseGateway, gateway), "nope")
+
+    assert result is None
+    assert len(gateway.calls) == 1  # short-circuits before any member queries
+    assert gateway.calls[0].filters == {"id": "nope"}
+
+
+@pytest.mark.asyncio
+async def test_fetch_cluster_detail_joins_members_and_ignores_status() -> None:
+    cluster_row = _card_row(status="stale")  # stale, yet still resolves by direct id
+    article_row = {"id": "a1", "title": "at", "url": "u", "source": "hn", "published_at": None}
+    gateway = RecordingGateway(
+        {
+            ("clusters", "select"): [cluster_row],
+            ("cluster_articles", "select"): [{"article_id": "a1"}],
+            ("articles", "select"): [article_row],
+        }
+    )
+
+    result = await fetch_cluster_detail(cast(SupabaseGateway, gateway), "c1")
+
+    assert result == (cluster_row, [article_row])
+    # cluster fetched by id with NO status filter -> a stale permalink still resolves.
+    assert gateway.calls[0].filters == {"id": "c1"}
+    # members: link table by cluster_id, then articles by resolved id.
+    assert gateway.calls[1].filters == {"cluster_id": "c1"}
+    assert gateway.calls[2].filters == {"id": ["a1"]}
+
+
+@pytest.mark.asyncio
+async def test_fetch_cluster_detail_skips_article_query_when_memberless() -> None:
+    gateway = RecordingGateway(
+        {("clusters", "select"): [_card_row()], ("cluster_articles", "select"): []}
+    )
+
+    result = await fetch_cluster_detail(cast(SupabaseGateway, gateway), "c1")
+
+    assert result == (_card_row(), [])
+    assert len(gateway.calls) == 2  # no articles query when there are no members

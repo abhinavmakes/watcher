@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = Field(default=8000, ge=1, le=65535)
     cors_origins: str = "http://localhost:3000"
+    rate_limit: str = "60/minute"
+    rate_limit_enabled: bool = True
 
     supabase_url: AnyHttpUrl | None = None
     supabase_secret_key: SecretStr | None = Field(default=None, repr=False)

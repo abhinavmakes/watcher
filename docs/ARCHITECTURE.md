@@ -264,7 +264,7 @@ the fallback demo data path; the live pipeline remains the source of truth.
 
 ```
 User opens dashboard
-  → Next.js server component fetches GET /clusters from API
+  → Browser fetches GET /clusters from the API client-side (CORS-allowed origin), NOT via a server component — see note below
   → API queries Supabase: clusters + article counts + momentum scores
   → Returns sorted by momentum (descending), with domain filters
   → Page renders with cluster cards
@@ -275,6 +275,8 @@ User subscribes to SSE
   → When new completed run detected, pushes event: {type: "refresh"}
   → Client refetches cluster data via SWR/React Query revalidation
 ```
+
+> **Why client-side fetch, not a Next.js server component (2026-07-01):** the public read API is no-auth, so per-IP rate limiting (slowapi) is the DoS bound — and per-IP only works if the API sees each user's *real* IP. A server-component fetch routes every user through Vercel's egress IP, collapsing per-IP into one shared bucket that would throttle all users together. Client-side fetch also means a `429` reaches the browser, where the frontend can surface a "slow down" toast. (The SSE live-updates path above is **v2** — see the POC-scope note in `BUILD_PLAN.md`.)
 
 ### RAG chat flow
 
@@ -476,9 +478,10 @@ catalog.
 
 ```
 GET  /clusters
-     Query: ?domain=ai_agents&status=active&limit=20&offset=0
-     Returns: paginated list of clusters sorted by momentum
-     Response: { clusters: Cluster[], total: int, has_more: bool }
+     Query: ?domain=ai_agents&limit=20&offset=0   (limit max 100; stale hidden server-side — no status param)
+     Returns: active clusters sorted by momentum DESC; momentum normalized 0-100 at read time
+     Response: ClusterPage { cards: ClusterCard[], total: int, limit: int, offset: int }
+     (impl 2026-06-30: store read done; normalization + handler pending)
 
 GET  /clusters/:id
      Returns: full cluster detail with synthesis + list of articles
