@@ -12,6 +12,10 @@ from app.models.synthesis import SynthesisOutput
 # gateway's URL-length limit, so query in batches.
 _IN_FILTER_BATCH_SIZE = 20
 
+_CLUSTER_CARD_COLUMNS = (
+    "id, title, summary, so_what, momentum_score, domains, key_entities, article_count, status"
+)
+
 
 def _parse_vector(raw: object) -> list[float]:
     """pgvector columns come back from postgREST as a "[...]" string; normalize to floats."""
@@ -203,10 +207,7 @@ async def fetch_clusters_page(
 ) -> tuple[list[dict[str, Any]], int]:
     query = (
         gateway.table("clusters")
-        .select(
-            "id, title, summary, so_what, momentum_score, domains, key_entities, article_count, status",
-            count="exact",
-        )
+        .select(_CLUSTER_CARD_COLUMNS, count="exact")
         .eq("status", "active")
     )
     if domain is not None:
@@ -214,3 +215,33 @@ async def fetch_clusters_page(
     query = query.order("momentum_score", desc=True).range(offset, offset + limit - 1)
     result = await query.execute()
     return result.data, result.count
+
+
+async def fetch_cluster_detail(
+    gateway: SupabaseGateway, cluster_id: str
+) -> tuple[dict[str, Any], list[dict[str, Any]]] | None:
+    """A cluster by id plus its member articles. No status filter — a permalink to a
+    cluster that later went stale still resolves; hide-stale governs the feed, not
+    direct lookups. Returns None when the id is unknown (the API translates that to 404)."""
+    cluster = await (
+        gateway.table("clusters").select(_CLUSTER_CARD_COLUMNS).eq("id", cluster_id).execute()
+    )
+    if not cluster.data:
+        return None
+    links = await (
+        gateway.table("cluster_articles")
+        .select("article_id")
+        .eq("cluster_id", cluster_id)
+        .execute()
+    )
+    article_ids = [row["article_id"] for row in links.data]
+    if not article_ids:
+        return cluster.data[0], []
+    articles = await (
+        gateway.table("articles")
+        .select("id, title, url, source, published_at")
+        .in_("id", article_ids)
+        .order("published_at", desc=True)
+        .execute()
+    )
+    return cluster.data[0], articles.data

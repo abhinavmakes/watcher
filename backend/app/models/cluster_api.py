@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -25,3 +26,15 @@ class ClusterPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class ClusterArticleRef(BaseModel):
+    id: str
+    title: str
+    url: str
+    source: str
+    published_at: datetime | None = None
+
+
+class ClusterDetail(ClusterCard):
+    articles: list[ClusterArticleRef]
