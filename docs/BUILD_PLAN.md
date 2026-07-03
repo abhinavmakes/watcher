@@ -4,7 +4,7 @@ Three-week build. ~40 hours total. Each week has a clear deliverable that works 
 
 Build order is risk-first: pipeline with HN + curated RSS → clustering eval → synthesis with gating → API endpoints → frontend → add GitHub/Product Hunt if they clear the quality bar → polish. This front-loads data quality before UI work.
 
-> **POC scope (2026-07-01):** the POC is the full ingestion pipeline + the cluster cards on a **public, read-only, no-auth frontend** (a public news-page). Everything in **Week 2 below — auth, BYOK, RAG chat, preferences, SSE, and the GitHub/Product Hunt connectors — is v2, out of POC scope**, kept here for the record. Backend for the POC = pipeline + read API + slowapi rate-limiting hardening. After that it's frontend only.
+> **POC scope (2026-07-03):** the POC is the full ingestion pipeline + the cluster cards on a **public, read-only, no-auth frontend** (a public news-page). Everything in **Week 2 below — auth, BYOK, RAG chat, preferences, SSE, and the GitHub/Product Hunt connectors — is v2, out of POC scope**, kept here for the record. Backend for the POC = pipeline + read API + slowapi rate-limiting hardening. After that it's frontend only.
 
 ## Current checkpoint
 
@@ -23,7 +23,7 @@ Fetch → dedup → classify → embed → cluster → **synthesize** → persis
 - 93 tests green; ruff and mypy clean
 - Live run verified (2026-06-21): 210 classified → 15 clusters → 15/15 synthesized, 0 failures
 
-The **API read slice is done (2026-07-01)**: the `ClusterCard`/`ClusterPage`/`ClusterDetail` contract (`app/models/cluster_api.py`), the store reads (`fetch_clusters_page` + `fetch_cluster_detail`), read-time 0-100 normalization (`100·raw/(raw+k)`, `k=5` via `_MOMENTUM_K`), `GET /clusters` (capped `Query` params, wired in `main.py`) and `GET /clusters/:id` (detail + member articles, one deliberate 404) — all green (106 tests). Decided: stale clusters are **hidden** from the feed (a worker run is a demo precondition), but detail-by-id ignores stale so permalinks resolve. **Remaining backend for the POC:** slowapi rate-limiting on the public read API (the in-app DoS bound, replacing the deferred edge/CDN plan), then optionally the synthesis eval + `single_source` arm. Then the frontend.
+The **API read slice is done (2026-07-03)**: the `ClusterCard`/`ClusterPage`/`ClusterDetail` contract (`app/models/cluster_api.py`), the store reads (`fetch_clusters_page` + `fetch_cluster_detail`), read-time 0-100 normalization (`100·raw/(raw+k)`, `k=5` via `_MOMENTUM_K`), `GET /clusters` (capped `Query` params, wired in `main.py`) and `GET /clusters/:id` (detail + member articles, one deliberate 404) — all green (106 tests). Decided: stale clusters are **hidden** from the feed (a worker run is a demo precondition), but detail-by-id ignores stale so permalinks resolve. **Remaining backend for the POC:** slowapi rate-limiting on the public read API (the in-app DoS bound, replacing the deferred edge/CDN plan), then optionally the synthesis eval + `single_source` arm. Then the frontend.
 
 ## Week 1: Data pipeline + backend core
 
@@ -232,6 +232,8 @@ The **API read slice is done (2026-07-01)**: the `ClusterCard`/`ClusterPage`/`Cl
 **Goal:** By end of week 3, the full product is deployed and demo-ready with a polished README and optional blog post.
 
 ### Day 11-12: Core frontend (8h)
+
+> **POC frontend = THREE pages** (`/` home/about, `/feed` cards grid, `/cluster/[id]` detail) — build spec in `docs/FRONTEND_PLAN.md`, security delta in `docs/FRONTEND_SECURITY.md`. **No Supabase client on the frontend, no sign-in (no auth), client-side fetch (SWR).** Momentum shows as a custom-SVG badge, not a time-series (no historical data). The chat panel / settings / auth UI (Day 13) and SSE / search (Day 14) are **v2** — kept below for the record only.
 
 **Dashboard page**
 - Next.js App Router setup

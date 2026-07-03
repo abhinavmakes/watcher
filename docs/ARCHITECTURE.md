@@ -276,7 +276,7 @@ User subscribes to SSE
   → Client refetches cluster data via SWR/React Query revalidation
 ```
 
-> **Why client-side fetch, not a Next.js server component (2026-07-01):** the public read API is no-auth, so per-IP rate limiting (slowapi) is the DoS bound — and per-IP only works if the API sees each user's *real* IP. A server-component fetch routes every user through Vercel's egress IP, collapsing per-IP into one shared bucket that would throttle all users together. Client-side fetch also means a `429` reaches the browser, where the frontend can surface a "slow down" toast. (The SSE live-updates path above is **v2** — see the POC-scope note in `BUILD_PLAN.md`.)
+> **Why client-side fetch, not a Next.js server component (2026-07-03):** the public read API is no-auth, so per-IP rate limiting (slowapi) is the DoS bound — and per-IP only works if the API sees each user's *real* IP. A server-component fetch routes every user through Vercel's egress IP, collapsing per-IP into one shared bucket that would throttle all users together. Client-side fetch also means a `429` reaches the browser, where the frontend can surface a "slow down" toast. (The SSE live-updates path above is **v2** — see the POC-scope note in `BUILD_PLAN.md`.)
 
 ### RAG chat flow
 
