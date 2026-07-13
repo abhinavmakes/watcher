@@ -11,6 +11,37 @@ from worker.pipeline import ConnectorSpec, run_pipeline
 
 logger = logging.getLogger(__name__)
 
+# Attributes on every LogRecord; anything else on a record came from a logger `extra=`.
+_RESERVED_LOG_ATTRS = set(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
+
+
+class _ExtraFormatter(logging.Formatter):
+    """Append the `extra=` payload the default formatter silently drops, so each pipeline
+    stage's counts land in the logs — the difference between a demo-legible run and a wall
+    of bare event names."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        base = super().format(record)
+        extras = {
+            key: value
+            for key, value in record.__dict__.items()
+            if key not in _RESERVED_LOG_ATTRS and not key.startswith("_")
+        }
+        if not extras:
+            return base
+        rendered = " ".join(f"{key}={value}" for key, value in extras.items())
+        return f"{base}  {rendered}"
+
+
+def _configure_logging() -> None:
+    handler = logging.StreamHandler()
+    handler.setFormatter(_ExtraFormatter("%(levelname)-5s %(message)s"))
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(handler)
+    root.setLevel(logging.INFO)
+
+
 # Some feeds (e.g. The Verge) reject requests without a browser-like User-Agent.
 _USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -49,7 +80,7 @@ async def _run_once() -> None:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO)
+    _configure_logging()
     asyncio.run(_run_once())
 
 
