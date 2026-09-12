@@ -1,7 +1,7 @@
 import logging
 
 from openai import AsyncOpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_not_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 from app.models import ArticleInput
@@ -29,7 +29,14 @@ def get_embedding_client() -> AsyncOpenAI:
     return _client
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=10))
+# A missing key is deterministic: retrying it three times wastes attempts and buries the
+# real message inside RetryError[...], which is how a missing OPENAI_API_KEY in CI read as
+# a tenacity failure two tracebacks deep. Retry transport errors, never configuration.
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_not_exception_type(EmbeddingConfigError),
+)
 async def _embed_batch(texts: list[str]) -> list[list[float]]:
     response = await get_embedding_client().embeddings.create(
         model=settings.embedding_model,
