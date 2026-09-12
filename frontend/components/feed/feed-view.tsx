@@ -25,17 +25,14 @@ function FeedStatus({
   domainCount: number;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-      <span className="inline-flex items-center gap-1.5">
-        <span className="size-1.5 rounded-full bg-emerald-500" />
-        Updated daily
-      </span>
-      <span className="text-border">·</span>
-      <span className="tabular-nums">
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
+      <span className="tabular-nums text-foreground">
         {total} {total === 1 ? "story" : "stories"}
       </span>
-      <span className="text-border">·</span>
-      <span className="tabular-nums">{domainCount} domains</span>
+      <span aria-hidden className="text-border">·</span>
+      <span className="tabular-nums">{domainCount} topics</span>
+      <span aria-hidden className="text-border">·</span>
+      <span>updated weekly</span>
     </div>
   );
 }

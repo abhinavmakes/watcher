@@ -3,7 +3,7 @@ import logging
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from pydantic_ai.usage import RunUsage
 
@@ -89,6 +89,7 @@ class _RunProgress:
     articles_fetched: int = 0
     articles_classified: int = 0
     articles_skipped_known: int = 0
+    articles_skipped_old: int = 0
     clusters_created: int = 0
     clusters_updated: int = 0
     clusters_scored: int = 0
@@ -109,6 +110,7 @@ class _RunProgress:
             articles_fetched=self.articles_fetched,
             articles_classified=self.articles_classified,
             articles_skipped_known=self.articles_skipped_known,
+            articles_skipped_old=self.articles_skipped_old,
             clusters_created=self.clusters_created,
             clusters_updated=self.clusters_updated,
             clusters_scored=self.clusters_scored,
@@ -145,6 +147,34 @@ def _deduplicate_fetched_articles(articles: Sequence[ArticleInput]) -> DedupResu
         articles=unique_articles,
         duplicates_by_source=duplicates_by_source,
     )
+
+
+def _drop_stale_articles(
+    articles: Sequence[ArticleInput], now: datetime, max_age_days: int
+) -> tuple[list[ArticleInput], int]:
+    """Drop articles published longer ago than the cutoff, keeping undated ones.
+
+    A feed returns its most recent N entries with no date condition, so adding a blog
+    with a deep archive backfills years of posts in one fetch. They are good articles
+    and they are not news, and because momentum weights arrival rather than publication
+    they would outrank everything published this week. Undated articles are kept: 3% of
+    the corpus has no date, and discarding what cannot be judged is the worse default.
+    """
+    cutoff = now - timedelta(days=max_age_days)
+    kept: list[ArticleInput] = []
+    dropped = 0
+    for article in articles:
+        published = article.published_at
+        if published is not None:
+            # Feeds without a timezone parse naive; comparing those to an aware `now`
+            # raises rather than returning a wrong answer, so normalize to UTC first.
+            if published.tzinfo is None:
+                published = published.replace(tzinfo=UTC)
+            if published < cutoff:
+                dropped += 1
+                continue
+        kept.append(article)
+    return kept, dropped
 
 
 async def _classify_articles(
@@ -293,18 +323,28 @@ async def run_pipeline(
                 for result in results
             }
 
+            fresh, progress.articles_skipped_old = _drop_stale_articles(
+                dedup_result.articles, started_at, settings.max_article_age_days
+            )
+            if progress.articles_skipped_old:
+                logger.info(
+                    "pipeline_skipped_old_articles",
+                    extra={
+                        "older_than_days": settings.max_article_age_days,
+                        "dropped": progress.articles_skipped_old,
+                    },
+                )
+
             # Classify only articles we have not seen before. Re-classifying already-persisted
             # articles is the dominant recurring LLM cost, so filter against the DB first.
-            to_classify = dedup_result.articles
+            to_classify = fresh
             if gateway is not None:
                 existing = await fetch_existing_canonical_urls(
                     gateway, [article.canonical_url for article in to_classify]
                 )
                 if existing:
                     to_classify = [a for a in to_classify if a.canonical_url not in existing]
-                    progress.articles_skipped_known = len(dedup_result.articles) - len(
-                        to_classify
-                    )
+                    progress.articles_skipped_known = len(fresh) - len(to_classify)
                     logger.info(
                         "pipeline_skipped_known_articles",
                         extra={

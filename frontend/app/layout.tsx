@@ -8,9 +8,9 @@ const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Watcher — AI & tech news, clustered into signal",
+  title: "Watcher | A week of AI and tech, grouped so you read each story once",
   description:
-    'Watcher clusters coverage of the same story across the AI/tech news firehose and synthesizes a factual summary plus a "so what."',
+    "Reads nineteen AI and engineering sources once a week and folds coverage of the same thing into a single story, so you read it once instead of five times.",
 };
 
 export default function RootLayout({
@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${geistSans.variable} ${geistMono.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <body className="min-h-dvh antialiased">
         {children}

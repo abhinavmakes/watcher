@@ -1,36 +1,69 @@
+import Link from "next/link";
+
 import { FeedView } from "@/components/feed/feed-view";
 import { PipelineAnimation } from "@/components/home/pipeline-animation";
 import { MomentumLegend } from "@/components/momentum-legend";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { SourceMarquee } from "@/components/source-marquee";
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 sm:py-10">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-6 sm:px-6 sm:py-8">
       <SiteHeader />
 
-      <section className="grid gap-8 lg:grid-cols-[1fr_1.05fr] lg:items-center">
-        <div className="flex flex-col gap-4">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            AI &amp; tech · updated daily
-          </p>
-          <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-            The AI &amp; tech stories everyone&apos;s covering right now.
-          </h1>
+      {/* Content first. The explainer used to sit above the feed — a hero, a paragraph,
+          a legend, an animation and a logo marquee — so the first thing a visitor met
+          was the site describing itself rather than the stories it found. */}
+      <section className="flex max-w-2xl flex-col gap-2.5">
+        <h1 className="text-balance text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
+          A week of AI and tech, grouped so you read each story once.
+        </h1>
+        <p className="text-pretty leading-relaxed text-muted-foreground">
+          It reads nineteen sources once a week, throws out the filler, and when several
+          of them cover the same thing it folds them into a single story instead of
+          handing you five copies of it.
+        </p>
+        <MomentumLegend />
+        <p className="rounded-md border border-border bg-muted/40 px-3.5 py-2.5 text-[13px] leading-relaxed text-muted-foreground">
+          <span className="font-medium text-foreground">A note.</span> The feed here is
+          tuned for me. The sources, the scoring, the clustering rules, all of it is
+          shaped around what I happen to care about. So if these stories look a bit
+          arbitrary from where you are sitting, that is fair, and it is sort of the
+          point. I built this mostly to learn how these systems fit together end to end,
+          and that is the half I would actually point you at:{" "}
+          <Link
+            href="/engineering"
+            className="font-medium text-foreground underline decoration-foreground/40 underline-offset-4 transition-colors hover:decoration-foreground"
+          >
+            see how it works
+          </Link>
+          , which walks through every stage, the decisions behind them, and the ones I
+          got wrong.
+        </p>
+      </section>
+
+      <FeedView />
+
+      <section className="flex flex-col gap-5 border-t border-border pt-10">
+        <div className="flex max-w-2xl flex-col gap-2">
+          <h2 className="text-lg font-semibold tracking-tight">
+            How a story gets here
+          </h2>
           <p className="text-pretty leading-relaxed text-muted-foreground">
-            Watcher reads 20+ AI and tech sources, throws out the low-quality noise,
-            and groups the outlets covering the same story. The more outlets pile onto
-            one thing, the more it matters — so it rises to the top, each with a plain
-            summary and a “so what.” Sources are one click away.
+            Seven stages, start to finish, running on a schedule.{" "}
+            <Link
+              href="/engineering"
+              className="font-medium text-foreground underline decoration-foreground/40 underline-offset-4 transition-colors hover:decoration-foreground"
+            >
+              See how it works
+            </Link>{" "}
+            for each stage and the reasoning behind it.
           </p>
-          <MomentumLegend />
         </div>
         <PipelineAnimation />
       </section>
 
-      <SourceMarquee />
-
-      <FeedView />
+      <SiteFooter />
     </main>
   );
 }

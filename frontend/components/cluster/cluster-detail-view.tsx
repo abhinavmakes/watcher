@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { DomainTag } from "@/components/domain-tag";
 import { MomentumReadout } from "@/components/feed/momentum-readout";
 import { ApiError, RateLimitError } from "@/lib/api";
-import { momentumColor } from "@/lib/momentum";
 import type { ClusterDetail } from "@/lib/types";
 import { useCluster } from "@/hooks/use-cluster";
 
@@ -22,26 +21,25 @@ import {
 
 function DetailHeader() {
   return (
-    <div className="flex items-center justify-between border-b border-border/60 pb-4">
+    <div className="flex items-center justify-between border-b border-border pb-4">
       <Link
         href="/"
-        className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+        className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" aria-hidden />
-        Briefing
+        Back to the briefing
       </Link>
       <Link
         href="/"
-        className="font-mono text-sm font-semibold tracking-[0.25em] text-foreground"
+        className="text-[15px] font-semibold tracking-tight text-foreground"
       >
-        WATCHER
+        Watcher
       </Link>
     </div>
   );
 }
 
 function DetailBody({ detail }: { detail: ClusterDetail }) {
-  const heat = momentumColor(detail.momentum);
   const hasSoWhat = Boolean(detail.so_what);
   const signal = detail.so_what ?? detail.summary ?? null;
   const showSummary = hasSoWhat && Boolean(detail.summary);
@@ -62,18 +60,7 @@ function DetailBody({ detail }: { detail: ClusterDetail }) {
       </h1>
 
       {signal && (
-        <div
-          className="flex flex-col gap-2 border-l-2 pl-4"
-          style={{ borderColor: momentumColor(detail.momentum, 0.7) }}
-        >
-          <span
-            className="font-mono text-[10px] uppercase tracking-[0.18em]"
-            style={{ color: heat }}
-          >
-            {hasSoWhat ? "Signal" : "Summary"}
-          </span>
-          <p className="text-pretty text-lg leading-snug text-foreground">{signal}</p>
-        </div>
+        <p className="text-pretty text-lg leading-relaxed text-foreground">{signal}</p>
       )}
 
       {showSummary && (
@@ -87,7 +74,7 @@ function DetailBody({ detail }: { detail: ClusterDetail }) {
           {detail.key_entities.map((entity) => (
             <span
               key={entity}
-              className="rounded-full bg-muted px-2.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+              className="rounded-full bg-muted px-2.5 py-1 text-[13px] text-muted-foreground"
             >
               {entity}
             </span>
@@ -95,7 +82,7 @@ function DetailBody({ detail }: { detail: ClusterDetail }) {
         </div>
       )}
 
-      <hr className="border-border/50" />
+      <hr className="border-border" />
 
       <ArticleList articles={detail.articles} />
     </article>
