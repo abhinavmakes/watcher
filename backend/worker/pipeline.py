@@ -1,8 +1,11 @@
 import asyncio
 import logging
+import re
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+
+from pydantic_ai.usage import RunUsage
 
 from app.agents.classifier import classify_article
 from app.agents.synthesizer import synthesize_cluster
@@ -25,8 +28,17 @@ from app.services.clustering import cluster_articles
 from app.services.embeddings import embed_texts, format_embedding_input
 from app.services.momentum import is_stale, score_momentum
 from app.services.pipeline_run_store import insert_pipeline_run
+from worker.metrics import RunMetrics
 
 logger = logging.getLogger(__name__)
+
+# httpx exception messages carry the full request URL. Keep the host (it identifies which
+# feed failed) and drop userinfo, path and query — the three places a feed credential sits.
+_URL_RE = re.compile(r"(https?://)(?:[^@/\s]*@)?([^/\s]+)\S*")
+
+
+def _redact_urls(message: str) -> str:
+    return _URL_RE.sub(r"\1\2...", message)
 
 
 class PipelineError(Exception):
@@ -67,11 +79,54 @@ class MomentumStats:
     stale: int
 
 
+@dataclass
+class _RunProgress:
+    """Counters accumulated as the run proceeds, so a run that dies partway still has
+    something to persist. Without this the summary is only built after every stage has
+    already succeeded, which means a crashed run writes no `pipeline_runs` row at all and
+    the audit trail silently samples only the runs that worked."""
+
+    articles_fetched: int = 0
+    articles_classified: int = 0
+    articles_skipped_known: int = 0
+    clusters_created: int = 0
+    clusters_updated: int = 0
+    clusters_scored: int = 0
+    clusters_stale: int = 0
+    source_stats: dict[str, SourceFetchStats] = field(default_factory=dict)
+
+    def to_summary(
+        self,
+        started_at: datetime,
+        status: PipelineRunStatus,
+        error_message: str | None = None,
+        metrics: RunMetrics | None = None,
+    ) -> PipelineRunSummary:
+        return PipelineRunSummary(
+            started_at=started_at,
+            completed_at=datetime.now(UTC),
+            status=status,
+            articles_fetched=self.articles_fetched,
+            articles_classified=self.articles_classified,
+            articles_skipped_known=self.articles_skipped_known,
+            clusters_created=self.clusters_created,
+            clusters_updated=self.clusters_updated,
+            clusters_scored=self.clusters_scored,
+            clusters_stale=self.clusters_stale,
+            source_stats=self.source_stats,
+            error_message=error_message,
+            cost_usd=metrics.cost_usd() if metrics is not None else 0.0,
+            tokens_in=metrics.tokens_in if metrics is not None else 0,
+            tokens_out=metrics.tokens_out if metrics is not None else 0,
+            stage_timings=dict(metrics.stage_timings) if metrics is not None else {},
+        )
+
+
 async def _fetch_from_connector(spec: ConnectorSpec) -> FetchResult:
     try:
         articles = await spec.connector.fetch_articles(spec.limit)
     except Exception as exc:
-        return FetchResult(source=spec.name, articles=[], error=str(exc))
+        return FetchResult(source=spec.name, articles=[], error=_redact_urls(str(exc)))
 
     return FetchResult(source=spec.name, articles=articles)
 
@@ -94,6 +149,7 @@ def _deduplicate_fetched_articles(articles: Sequence[ArticleInput]) -> DedupResu
 
 async def _classify_articles(
     articles: Sequence[ArticleInput],
+    usage: RunUsage | None = None,
 ) -> list[tuple[ArticleInput, ClassificationOutput | None]]:
     results: list[tuple[ArticleInput, ClassificationOutput | None]] = []
     interval = 60 / settings.classifier_rpm
@@ -101,7 +157,7 @@ async def _classify_articles(
         if i > 0:
             await asyncio.sleep(interval)
         try:
-            result: ClassificationOutput | None = await classify_article(article)
+            result: ClassificationOutput | None = await classify_article(article, usage=usage)
         except Exception as e:
             logger.warning(
                 "classification_failed",
@@ -156,6 +212,7 @@ def _build_synthesis_input(cluster: Cluster, by_url: dict[str, ArticleInput]) ->
 async def _synthesize_new_clusters(
     new_clusters: Sequence[Cluster],
     classified: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+    usage: RunUsage | None = None,
 ) -> list[SynthesisOutput | None]:
     by_url = {article.canonical_url: article for article, _ in classified}
     interval = 60 / settings.synthesis_rpm
@@ -165,7 +222,7 @@ async def _synthesize_new_clusters(
             await asyncio.sleep(interval)
         try:
             output: SynthesisOutput | None = await synthesize_cluster(
-                _build_synthesis_input(cluster, by_url)
+                _build_synthesis_input(cluster, by_url), usage=usage
             )
         except Exception as e:
             logger.warning(
@@ -197,89 +254,145 @@ async def _score_momentum(gateway: SupabaseGateway, now: datetime) -> MomentumSt
     return MomentumStats(scored=len(arrivals_by_cluster), stale=stale_count)
 
 
+async def _record_run(gateway: SupabaseGateway | None, summary: PipelineRunSummary) -> None:
+    """Persist the run row, swallowing its own errors. On the failure path the original
+    exception is the one worth propagating; a lost audit row must not mask it."""
+    if gateway is None:
+        return
+    try:
+        await insert_pipeline_run(gateway=gateway, summary=summary)
+    except Exception as exc:
+        logger.warning("pipeline_run_not_recorded", extra={"error": str(exc)})
+
+
 async def run_pipeline(
     connector_specs: Sequence[ConnectorSpec],
     gateway: SupabaseGateway | None = None,
 ) -> PipelineRunSummary:
     started_at = datetime.now(UTC)
-
-    results = await asyncio.gather(*(_fetch_from_connector(spec) for spec in connector_specs))
-    all_articles = [article for result in results for article in result.articles]
-    dedup_result = _deduplicate_fetched_articles(all_articles)
-
-    # Classify only articles we have not seen before. Re-classifying already-persisted
-    # articles is the dominant recurring LLM cost, so filter against the DB first.
-    to_classify = dedup_result.articles
-    articles_skipped_known = 0
-    if gateway is not None:
-        existing = await fetch_existing_canonical_urls(
-            gateway, [article.canonical_url for article in to_classify]
-        )
-        if existing:
-            to_classify = [a for a in to_classify if a.canonical_url not in existing]
-            articles_skipped_known = len(dedup_result.articles) - len(to_classify)
-            logger.info(
-                "pipeline_skipped_known_articles",
-                extra={"known": articles_skipped_known, "to_classify": len(to_classify)},
-            )
-
-    classified_articles = await _classify_articles(to_classify)
-    source_stats = {
-        result.source: SourceFetchStats(
-            returned=len(result.articles),
-            duplicates=dedup_result.duplicates_by_source.get(result.source, 0),
-            error=result.error,
-        )
-        for result in results
-    }
-    clusters_created = 0
-    clusters_updated = 0
-    clusters_scored = 0
-    clusters_stale = 0
-    if gateway is not None:
-        embedded = await _embed_articles(classified_articles)
-        await insert_articles(
-            gateway=gateway,
-            articles=classified_articles,
-            embeddings={item.canonical_url: item.vector for item in embedded},
-        )
-        existing_clusters = await fetch_existing_clusters(gateway)
-        cluster_result = cluster_articles(embedded, existing_clusters)
-        new_cluster_syntheses = await _synthesize_new_clusters(
-            cluster_result.new_clusters, classified_articles
-        )
-        await persist_cluster_result(
-            gateway, cluster_result, existing_clusters, embedded, new_cluster_syntheses
-        )
-        clusters_created = len(cluster_result.new_clusters)
-        clusters_updated = len(cluster_result.updated)
-        logger.info(
-            "pipeline_synthesized_clusters",
-            extra={"synthesized": sum(1 for s in new_cluster_syntheses if s is not None)},
-        )
-        momentum = await _score_momentum(gateway, datetime.now(UTC))
-        clusters_scored = momentum.scored
-        clusters_stale = momentum.stale
-        logger.info(
-            "pipeline_scored_momentum",
-            extra={"clusters_scored": clusters_scored, "clusters_stale": clusters_stale},
-        )
-
-    summary = PipelineRunSummary(
-        started_at=started_at,
-        completed_at=datetime.now(UTC),
-        status=PipelineRunStatus.COMPLETED,
-        articles_fetched=len(all_articles),
-        articles_classified=sum(1 for _, c in classified_articles if c is not None),
-        articles_skipped_known=articles_skipped_known,
-        clusters_created=clusters_created,
-        clusters_updated=clusters_updated,
-        clusters_scored=clusters_scored,
-        clusters_stale=clusters_stale,
-        source_stats=source_stats,
+    progress = _RunProgress()
+    metrics = RunMetrics(
+        classifier_model=settings.classifier_model,
+        synthesis_model=settings.synthesis_model,
     )
 
-    if gateway is not None:
-        await insert_pipeline_run(gateway=gateway, summary=summary)
+    try:
+        with metrics.timed_stage("fetch"):
+            results = await asyncio.gather(
+                *(_fetch_from_connector(spec) for spec in connector_specs)
+            )
+            all_articles = [article for result in results for article in result.articles]
+            dedup_result = _deduplicate_fetched_articles(all_articles)
+            progress.articles_fetched = len(all_articles)
+            progress.source_stats = {
+                result.source: SourceFetchStats(
+                    returned=len(result.articles),
+                    duplicates=dedup_result.duplicates_by_source.get(result.source, 0),
+                    error=result.error,
+                )
+                for result in results
+            }
 
+            # Classify only articles we have not seen before. Re-classifying already-persisted
+            # articles is the dominant recurring LLM cost, so filter against the DB first.
+            to_classify = dedup_result.articles
+            if gateway is not None:
+                existing = await fetch_existing_canonical_urls(
+                    gateway, [article.canonical_url for article in to_classify]
+                )
+                if existing:
+                    to_classify = [a for a in to_classify if a.canonical_url not in existing]
+                    progress.articles_skipped_known = len(dedup_result.articles) - len(
+                        to_classify
+                    )
+                    logger.info(
+                        "pipeline_skipped_known_articles",
+                        extra={
+                            "known": progress.articles_skipped_known,
+                            "to_classify": len(to_classify),
+                        },
+                    )
+
+        with metrics.timed_stage("classify"):
+            classified_articles = await _classify_articles(
+                to_classify, usage=metrics.classifier_usage
+            )
+            progress.articles_classified = sum(1 for _, c in classified_articles if c is not None)
+
+        if gateway is not None:
+            with metrics.timed_stage("embed"):
+                embedded = await _embed_articles(classified_articles)
+                # Estimated (chars/4), not read from the API response — see worker/metrics.py.
+                metrics.embedding_tokens += (
+                    sum(
+                        len(format_embedding_input(article))
+                        for article, classification in classified_articles
+                        if classification is not None and not classification.is_noise
+                    )
+                    // 4
+                )
+                await insert_articles(
+                    gateway=gateway,
+                    articles=classified_articles,
+                    embeddings={item.canonical_url: item.vector for item in embedded},
+                )
+
+            with metrics.timed_stage("cluster"):
+                existing_clusters = await fetch_existing_clusters(gateway)
+                cluster_result = cluster_articles(embedded, existing_clusters)
+
+            with metrics.timed_stage("synthesize"):
+                new_cluster_syntheses = await _synthesize_new_clusters(
+                    cluster_result.new_clusters,
+                    classified_articles,
+                    usage=metrics.synthesis_usage,
+                )
+                await persist_cluster_result(
+                    gateway, cluster_result, existing_clusters, embedded, new_cluster_syntheses
+                )
+                progress.clusters_created = len(cluster_result.new_clusters)
+                progress.clusters_updated = len(cluster_result.updated)
+                logger.info(
+                    "pipeline_synthesized_clusters",
+                    extra={"synthesized": sum(1 for s in new_cluster_syntheses if s is not None)},
+                )
+
+            with metrics.timed_stage("momentum"):
+                momentum = await _score_momentum(gateway, datetime.now(UTC))
+                progress.clusters_scored = momentum.scored
+                progress.clusters_stale = momentum.stale
+                logger.info(
+                    "pipeline_scored_momentum",
+                    extra={
+                        "clusters_scored": progress.clusters_scored,
+                        "clusters_stale": progress.clusters_stale,
+                    },
+                )
+    except Exception as exc:
+        failed = progress.to_summary(
+            started_at, PipelineRunStatus.FAILED, str(exc), metrics=metrics
+        )
+        logger.error(
+            "pipeline_failed",
+            extra={
+                "error": str(exc),
+                "articles_fetched": failed.articles_fetched,
+                "articles_classified": failed.articles_classified,
+                "clusters_created": failed.clusters_created,
+            },
+        )
+        await _record_run(gateway, failed)
+        raise
+
+    summary = progress.to_summary(started_at, PipelineRunStatus.COMPLETED, metrics=metrics)
+    logger.info(
+        "pipeline_cost",
+        extra={
+            "cost_usd": round(summary.cost_usd, 4),
+            "tokens_in": summary.tokens_in,
+            "tokens_out": summary.tokens_out,
+            "stage_timings": {k: round(v, 1) for k, v in summary.stage_timings.items()},
+        },
+    )
+    await _record_run(gateway, summary)
     return summary

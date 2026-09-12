@@ -67,7 +67,9 @@ async def test_classify_articles_pairs_articles_with_classifications_preserving_
         a3.canonical_url: _classification(ArticleDomain.PYTHON),
     }
 
-    async def fake_classify_article(article: ArticleInput) -> ClassificationOutput:
+    async def fake_classify_article(
+        article: ArticleInput, *, usage: object | None = None
+    ) -> ClassificationOutput:
         return expected[article.canonical_url]
 
     monkeypatch.setattr("worker.pipeline.classify_article", fake_classify_article)
@@ -92,7 +94,9 @@ async def test_classify_articles_records_none_for_failed_articles_without_raisin
     a3 = _article("Third")
     good_output = _classification()
 
-    async def fake_classify_article(article: ArticleInput) -> ClassificationOutput:
+    async def fake_classify_article(
+        article: ArticleInput, *, usage: object | None = None
+    ) -> ClassificationOutput:
         if article is a2:
             raise RuntimeError("agent boom")
         return good_output
@@ -117,7 +121,9 @@ async def test_classify_articles_sleeps_n_minus_one_times_between_calls(
 ) -> None:
     articles = [_article(f"Article {i}") for i in range(article_count)]
 
-    async def fake_classify_article(article: ArticleInput) -> ClassificationOutput:
+    async def fake_classify_article(
+        article: ArticleInput, *, usage: object | None = None
+    ) -> ClassificationOutput:
         return _classification()
 
     monkeypatch.setattr("worker.pipeline.classify_article", fake_classify_article)
@@ -135,7 +141,9 @@ async def test_classify_articles_sleep_interval_is_60_over_classifier_rpm(
     monkeypatch.setattr("worker.pipeline.settings.classifier_rpm", 30)
     articles = [_article(f"Article {i}") for i in range(3)]
 
-    async def fake_classify_article(article: ArticleInput) -> ClassificationOutput:
+    async def fake_classify_article(
+        article: ArticleInput, *, usage: object | None = None
+    ) -> ClassificationOutput:
         return _classification()
 
     monkeypatch.setattr("worker.pipeline.classify_article", fake_classify_article)

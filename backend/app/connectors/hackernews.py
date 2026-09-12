@@ -6,6 +6,7 @@ import httpx
 from pydantic import ValidationError
 
 from app.models.article import ArticleInput
+from app.services.html_text import clean_html
 from app.services.url_normalizer import normalize_url
 
 HN_BASE_URL = "https://hacker-news.firebaseio.com/v0"
@@ -64,7 +65,7 @@ class HackerNewsConnector:
                         "title": title,
                         "url": article_url,
                         "canonical_url": normalize_url(article_url),
-                        "content": item.get("text"),
+                        "content": clean_html(item.get("text")),
                         "published_at": _published_at(item.get("time")),
                         "source_metadata": {
                             "hn_id": hn_id,

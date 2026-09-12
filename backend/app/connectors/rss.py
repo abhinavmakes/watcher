@@ -1,15 +1,23 @@
 import asyncio
+import logging
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
 
 import feedparser
 import httpx
-from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from app.models.article import ArticleInput
+from app.services.html_text import clean_html
 from app.services.url_normalizer import normalize_url
+
+logger = logging.getLogger(__name__)
+
+# A feed host that turns hostile (or is compromised) can return an unbounded body, and
+# reading the whole response into memory has no ceiling. 10 MB is far above any real feed
+# — the largest full-text feed in the mix is a few hundred KB — so this only trips on abuse.
+_MAX_FEED_BYTES = 10 * 1024 * 1024
 
 
 class RssConnector:
@@ -19,11 +27,22 @@ class RssConnector:
 
     async def _fetch_feed(self, feed_url: str) -> bytes | None:
         try:
-            resp = await self._client.get(feed_url)
-            resp.raise_for_status()
+            async with self._client.stream("GET", feed_url) as resp:
+                resp.raise_for_status()
+                chunks: list[bytes] = []
+                total = 0
+                async for chunk in resp.aiter_bytes():
+                    total += len(chunk)
+                    if total > _MAX_FEED_BYTES:
+                        logger.warning(
+                            "feed_exceeded_byte_cap",
+                            extra={"feed_url": feed_url, "bytes": total},
+                        )
+                        return None
+                    chunks.append(chunk)
         except httpx.HTTPError:
             return None
-        return resp.content
+        return b"".join(chunks)
 
     async def fetch_articles(self, limit: int) -> list[ArticleInput]:
         if limit < 1:
@@ -83,8 +102,8 @@ class RssConnector:
                     "title": title.strip(),
                     "url": link,
                     "canonical_url": normalize_url(link),
-                    "content": _clean_html(entry.get("summary")),
-                    "published_at": _parse_published(entry.get("published")),
+                    "content": _extract_body(entry),
+                    "published_at": _parse_published(_published_value(entry)),
                     "source_metadata": {
                         "feed_url": feed_url,
                         "feed_title": feed_title,
@@ -99,12 +118,30 @@ class RssConnector:
         return article
 
 
-def _clean_html(value: object) -> str | None:
-    if not isinstance(value, str):
-        return None
+def _extract_body(entry: dict[str, Any]) -> str | None:
+    """Prefer the full post body over the teaser.
 
-    text = BeautifulSoup(value, "html.parser").get_text(" ", strip=True)
-    return text or None
+    Feeds carry the body in `<content:encoded>` (RSS) or `<content>` (Atom), which feedparser
+    surfaces as `entry.content`; `<description>`/`summary` is usually a truncated teaser. Reading
+    only `summary` cost 30-67x the text on every feed that ships both — measured 2026-08-02:
+    Ahead of AI 74 -> 33,325 chars, Pragmatic Engineer 170 -> 12,066, AWS ML blog 314 -> 21,115.
+    """
+    content = entry.get("content")
+    if isinstance(content, list) and content:
+        first = content[0]
+        if isinstance(first, dict):
+            body = clean_html(first.get("value"))
+            if body:
+                return body
+
+    return clean_html(entry.get("summary"))
+
+
+def _published_value(entry: dict[str, Any]) -> object:
+    """Atom entries may carry only `<updated>`; feedparser aliases `updated` to `published`
+    but not the reverse, so reading `published` alone silently drops the date on those feeds.
+    """
+    return entry.get("published") or entry.get("updated")
 
 
 def _parse_published(value: object) -> datetime | None:

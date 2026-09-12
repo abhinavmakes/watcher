@@ -54,6 +54,7 @@ async def _run_once() -> None:
         timeout=20.0,
         headers={"User-Agent": _USER_AGENT},
         follow_redirects=True,
+        max_redirects=5,
     ) as client:
         connector_specs = [
             ConnectorSpec(
@@ -72,6 +73,10 @@ async def _run_once() -> None:
                     limit=settings.rss_fetch_limit,
                 )
             )
+        else:
+            # Defaults to "", so an unset RSS_FEED_URLS is indistinguishable from a healthy
+            # HN-only run: no error, no empty-source stat, just a quietly smaller corpus.
+            logger.warning("rss_feed_urls_not_configured", extra={"connectors": "hn only"})
 
         gateway = await get_supabase_gateway()
         summary = await run_pipeline(connector_specs, gateway=gateway)

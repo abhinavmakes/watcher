@@ -81,4 +81,8 @@ async def test_insert_pipeline_run_maps_summary_to_pipeline_runs_table_row() -> 
             },
         },
         "error_message": None,
+        "cost_usd": 0.0,
+        "tokens_in": 0,
+        "tokens_out": 0,
+        "stage_timings": {},
     }

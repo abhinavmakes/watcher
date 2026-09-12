@@ -110,11 +110,11 @@ async def test_get_cluster_detail_returns_members(
 
     monkeypatch.setattr(clusters_api, "fetch_cluster_detail", fake_detail)
 
-    response = await client.get("/clusters/c1")
+    response = await client.get("/clusters/11111111-1111-1111-1111-111111111111")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["id"] == "c1"
+    assert body["id"] == "11111111-1111-1111-1111-111111111111"
     assert body["momentum"] == 50.0
     assert body["articles"][0]["id"] == "a1"
     assert body["articles"][0]["source"] == "rss"
@@ -130,7 +130,13 @@ async def test_get_cluster_detail_404_when_missing(
 
     monkeypatch.setattr(clusters_api, "fetch_cluster_detail", fake_detail)
 
-    response = await client.get("/clusters/does-not-exist")
+    response = await client.get("/clusters/00000000-0000-0000-0000-000000000000")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Cluster not found"
+
+
+async def test_get_cluster_detail_rejects_malformed_uuid(client: httpx.AsyncClient) -> None:
+    response = await client.get("/clusters/not-a-uuid")
+
+    assert response.status_code == 422

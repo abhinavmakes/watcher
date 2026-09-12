@@ -1,4 +1,5 @@
 from typing import Annotated, Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -55,10 +56,10 @@ async def get_clusters(
 
 @router.get("/clusters/{cluster_id}")
 async def get_cluster(
-    cluster_id: str,
+    cluster_id: UUID,
     gateway: Annotated[SupabaseGateway, Depends(get_supabase_gateway)],
 ) -> ClusterDetail:
-    detail = await fetch_cluster_detail(gateway, cluster_id)
+    detail = await fetch_cluster_detail(gateway, str(cluster_id))
     if detail is None:
         raise HTTPException(status_code=404, detail="Cluster not found")
     cluster_row, article_rows = detail

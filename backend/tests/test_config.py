@@ -24,7 +24,6 @@ def test_settings_loads_typed_values_from_environment(
             "SUPABASE_SECRET_KEY": "sb_secret_test",
             "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_test",
             "CLAUDE_API_KEY": "claude-test-key",
-            "ENCRYPTION_KEY": "encryption-test-key",
             "HN_FETCH_LIMIT": "25",
             "RSS_FETCH_LIMIT": "40",
             "RSS_FEED_URLS": "https://example.com/feed.xml, https://example.com/blog.atom",
@@ -40,7 +39,6 @@ def test_settings_loads_typed_values_from_environment(
     assert settings.supabase_secret_value == "sb_secret_test"
     assert settings.supabase_publishable_key == "sb_publishable_test"
     assert settings.claude_api_key_value == "claude-test-key"
-    assert settings.encryption_key_value == "encryption-test-key"
     assert settings.hn_fetch_limit == 25
     assert settings.rss_fetch_limit == 40
     assert settings.rss_feed_url_list == [
@@ -59,7 +57,6 @@ def test_settings_treats_blank_optional_secrets_as_missing(
             "SUPABASE_SECRET_KEY": "",
             "SUPABASE_PUBLISHABLE_KEY": "",
             "CLAUDE_API_KEY": "",
-            "ENCRYPTION_KEY": "",
         }
     )
 
@@ -67,7 +64,6 @@ def test_settings_treats_blank_optional_secrets_as_missing(
     assert settings.supabase_secret_value is None
     assert settings.supabase_publishable_key is None
     assert settings.claude_api_key_value is None
-    assert settings.encryption_key_value is None
 
 
 def test_settings_redacts_secret_values() -> None:
@@ -75,7 +71,6 @@ def test_settings_redacts_secret_values() -> None:
         {
             "supabase_secret_key": "sb_secret_test",
             "claude_api_key": "claude-test-key",
-            "encryption_key": "encryption-test-key",
         }
     )
 
@@ -83,7 +78,6 @@ def test_settings_redacts_secret_values() -> None:
 
     assert "sb_secret_test" not in settings_repr
     assert "claude-test-key" not in settings_repr
-    assert "encryption-test-key" not in settings_repr
 
 
 def test_settings_validates_bounds() -> None:

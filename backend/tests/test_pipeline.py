@@ -8,14 +8,26 @@ from app.core.supabase import SupabaseGateway
 from app.models.article import ArticleInput, EmbeddedArticle
 from app.models.classification import ArticleDomain, ClassificationOutput
 from app.models.cluster import Cluster, ClusterResult, ExistingCluster
-from app.models.pipeline_run import PipelineRunSummary
+from app.models.pipeline_run import PipelineRunStatus, PipelineRunSummary
 from app.models.synthesis import SynthesisOutput
 from worker.pipeline import (
     ConnectorSpec,
     _build_synthesis_input,
     _deduplicate_fetched_articles,
+    _redact_urls,
     run_pipeline,
 )
+
+
+def test_redact_urls_keeps_host_drops_path_and_query() -> None:
+    message = "Connect error for https://newsletter.example.com/feed?token=secret123 (timeout)"
+
+    expected = "Connect error for https://newsletter.example.com... (timeout)"
+    assert _redact_urls(message) == expected
+    # Credentials in the URL are the thing worth redacting; the host is not.
+    assert _redact_urls("GET https://u:pw@feed.example/x?t=1 failed") == (
+        "GET https://feed.example... failed"
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +35,9 @@ def _stub_classifier(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch classify_article, the rate-limit sleep, and embed_texts so pipeline tests stay
     hermetic and fast."""
 
-    async def fake_classify_article(article: ArticleInput) -> ClassificationOutput:
+    async def fake_classify_article(
+        article: ArticleInput, *, usage: object | None = None
+    ) -> ClassificationOutput:
         return ClassificationOutput(
             domains=[ArticleDomain.LLMS],
             relevance_score=0.5,
@@ -469,3 +483,89 @@ async def test_run_pipeline_scores_momentum_and_marks_stale(
     # Both counts land in the run summary for the pipeline_runs audit row.
     assert summary.clusters_scored == 2
     assert summary.clusters_stale == 1
+
+
+def _failure_gateway_patches(
+    monkeypatch: pytest.MonkeyPatch, persisted: list[PipelineRunSummary]
+) -> None:
+    async def fake_fetch_existing(
+        gateway: SupabaseGateway, canonical_urls: Sequence[str]
+    ) -> set[str]:
+        return set()
+
+    async def exploding_insert_articles(
+        gateway: SupabaseGateway,
+        articles: Sequence[tuple[ArticleInput, ClassificationOutput | None]],
+        embeddings: dict[str, list[float]] | None = None,
+    ) -> int:
+        raise RuntimeError("supabase unreachable")
+
+    async def fake_insert_pipeline_run(
+        gateway: SupabaseGateway, summary: PipelineRunSummary
+    ) -> None:
+        persisted.append(summary)
+
+    monkeypatch.setattr("worker.pipeline.fetch_existing_canonical_urls", fake_fetch_existing)
+    monkeypatch.setattr("worker.pipeline.insert_articles", exploding_insert_articles)
+    monkeypatch.setattr("worker.pipeline.insert_pipeline_run", fake_insert_pipeline_run)
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_records_a_failed_run_with_the_counts_it_reached(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A crash used to leave no pipeline_runs row at all, because the summary was only built
+    # after every stage had already succeeded — so the audit trail only sampled runs that worked.
+    persisted: list[PipelineRunSummary] = []
+    _failure_gateway_patches(monkeypatch, persisted)
+
+    with pytest.raises(RuntimeError, match="supabase unreachable"):
+        await run_pipeline(
+            [ConnectorSpec(name="hn", connector=FakeConnector([_article("Story")]), limit=10)],
+            gateway=cast(SupabaseGateway, object()),
+        )
+
+    assert len(persisted) == 1
+    failed = persisted[0]
+    assert failed.status is PipelineRunStatus.FAILED
+    assert failed.error_message == "supabase unreachable"
+    # The work done before the crash survives rather than being lost with the run.
+    assert failed.articles_fetched == 1
+    assert failed.articles_classified == 1
+    assert failed.clusters_created == 0
+    assert failed.source_stats["hn"].returned == 1
+    assert failed.completed_at is not None
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_does_not_let_a_failed_audit_write_mask_the_real_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persisted: list[PipelineRunSummary] = []
+    _failure_gateway_patches(monkeypatch, persisted)
+
+    async def exploding_insert_pipeline_run(
+        gateway: SupabaseGateway, summary: PipelineRunSummary
+    ) -> None:
+        raise RuntimeError("audit table is also down")
+
+    monkeypatch.setattr("worker.pipeline.insert_pipeline_run", exploding_insert_pipeline_run)
+
+    # The pipeline's own failure is the diagnostic worth propagating, not the bookkeeping one.
+    with pytest.raises(RuntimeError, match="supabase unreachable"):
+        await run_pipeline(
+            [ConnectorSpec(name="hn", connector=FakeConnector([_article("Story")]), limit=10)],
+            gateway=cast(SupabaseGateway, object()),
+        )
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_marks_a_successful_run_completed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    summary = await run_pipeline(
+        [ConnectorSpec(name="hn", connector=FakeConnector([_article("Story")]), limit=10)]
+    )
+
+    assert summary.status is PipelineRunStatus.COMPLETED
+    assert summary.error_message is None

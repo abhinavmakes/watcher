@@ -16,11 +16,18 @@ _RATE_LIMIT_HEADERS = (
 
 
 def _client_ip(request: Request) -> str:
-    # Behind a proxy (EC2 load balancer / CDN) the socket peer is the proxy; trust the
-    # first X-Forwarded-For hop so per-IP limiting keys on the real client, not the proxy.
+    # X-Forwarded-For is client-supplied and each proxy *appends* the peer it received
+    # from, so trustworthy entries sit at the right-hand end. With hops=0 (nothing in
+    # front of this app) the header is entirely attacker-controlled and must be ignored;
+    # with hops=N, the real client is N entries from the right.
+    hops = settings.trusted_proxy_hops
+    if hops == 0:
+        return get_remote_address(request)
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+        if len(parts) >= hops:
+            return parts[-hops]
     return get_remote_address(request)
 
 

@@ -12,7 +12,9 @@ import {
   FeedRateLimited,
   FeedSkeleton,
 } from "@/components/feed/feed-states";
+import { LastRunStrip } from "@/components/feed/last-run-strip";
 import { useClusters } from "@/hooks/use-clusters";
+import { useLatestRun } from "@/hooks/use-latest-run";
 import { RateLimitError } from "@/lib/api";
 
 function FeedStatus({
@@ -40,6 +42,7 @@ function FeedStatus({
 
 export function FeedView() {
   const { page, error, isLoading, refresh } = useClusters();
+  const { run } = useLatestRun();
   const [activeDomain, setActiveDomain] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,6 +77,7 @@ export function FeedView() {
         total={page?.total ?? cards.length}
         domainCount={domains.length}
       />
+      {run && <LastRunStrip run={run} />}
 
       {isLoading ? (
         <FeedSkeleton />

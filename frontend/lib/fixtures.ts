@@ -3,6 +3,7 @@ import type {
   ClusterCard,
   ClusterDetail,
   ClusterPage,
+  RunPage,
 } from "@/lib/types";
 
 // Typed mock data matching the read-API contract. Lets the whole UI render before
@@ -255,3 +256,25 @@ export const mockClusterPage: ClusterPage = {
 export const mockDetails: Record<string, ClusterDetail> = Object.fromEntries(
   cards.map((card) => [card.id, { ...card, articles: articlesById[card.id] ?? [] }]),
 );
+
+// Mirrors a real recorded run (DECISIONS.md, 2026-08-02): 263 fetched, 185 classified,
+// 16 clusters, 23.6 minutes.
+export const mockRunPage: RunPage = {
+  runs: [
+    {
+      id: "mock-run-1",
+      started_at: "2026-08-02T09:00:00Z",
+      completed_at: "2026-08-02T09:23:36Z",
+      status: "completed",
+      articles_fetched: 263,
+      articles_classified: 185,
+      clusters_created: 16,
+      clusters_updated: 3,
+      cost_usd: 1.02,
+      tokens_in: 950_000,
+      tokens_out: 42_000,
+      stage_timings: { fetch: 4.2, classify: 736.4, embed: 8.1, cluster: 0.4, synthesize: 60.2, momentum: 1.9 },
+      error_message: null,
+    },
+  ],
+};
