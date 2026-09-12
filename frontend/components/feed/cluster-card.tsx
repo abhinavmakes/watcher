@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 
-import { DomainTag } from "@/components/domain-tag";
+import { domainMeta } from "@/lib/domains";
 import { momentumColor } from "@/lib/momentum";
 import type { ClusterCard as ClusterCardModel } from "@/lib/types";
 
@@ -17,70 +16,51 @@ export function ClusterCard({
   variant?: CardVariant;
 }) {
   const isFeature = variant === "feature";
-  const heat = momentumColor(card.momentum);
-  const hasSoWhat = Boolean(card.so_what);
   const signal = card.so_what ?? card.summary ?? null;
-  const summary = isFeature && hasSoWhat ? card.summary : null;
-  const entities = card.key_entities.slice(0, isFeature ? 4 : 2);
+  const domains = card.domains
+    .slice(0, isFeature ? 3 : 2)
+    .map((domain) => domainMeta(domain).label);
 
   return (
     <Link
       href={`/cluster/${card.id}`}
-      className="group flex h-full flex-col gap-4 rounded-xl border border-border/60 bg-card/50 p-5 transition-colors hover:border-border hover:bg-card"
+      className="card-surface group flex h-full flex-col gap-3 rounded-lg p-5 transition-shadow duration-200 hover:card-surface-hover sm:p-6"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
-          {card.domains.slice(0, isFeature ? 4 : 3).map((domain) => (
-            <DomainTag key={domain} domain={domain} />
-          ))}
-        </div>
+      <div className="flex items-start justify-between gap-4">
+        <h3
+          className={`font-semibold tracking-tight text-pretty text-foreground ${
+            isFeature ? "text-xl leading-snug" : "line-clamp-3 text-base leading-snug"
+          }`}
+        >
+          {card.title}
+        </h3>
         <MomentumReadout value={card.momentum} size={isFeature ? "lg" : "md"} />
       </div>
 
-      <h3
-        className={`font-semibold leading-snug text-pretty text-foreground ${
-          isFeature ? "text-xl" : "line-clamp-2 text-base"
-        }`}
-      >
-        {card.title}
-      </h3>
-
       {signal && (
-        <div
-          className="flex flex-col gap-1.5 border-l-2 pl-3"
-          style={{ borderColor: momentumColor(card.momentum, 0.7) }}
+        <p
+          className={`text-pretty leading-relaxed text-muted-foreground ${
+            isFeature ? "line-clamp-4 text-[15px]" : "line-clamp-3 text-sm"
+          }`}
         >
-          <span
-            className="font-mono text-[10px] uppercase tracking-[0.18em]"
-            style={{ color: heat }}
-          >
-            {hasSoWhat ? "Signal" : "Summary"}
-          </span>
-          <p
-            className={`leading-snug text-pretty text-foreground/85 ${
-              isFeature ? "text-base" : "line-clamp-3 text-sm"
-            }`}
-          >
-            {signal}
-          </p>
-        </div>
-      )}
-
-      {summary && (
-        <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-          {summary}
+          {signal}
         </p>
       )}
 
-      <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/50 pt-3 font-mono text-[11px] text-muted-foreground">
-        <span className="truncate">{entities.join(" · ") || "—"}</span>
-        <span className="inline-flex shrink-0 items-center gap-1 tabular-nums">
+      <div className="mt-auto flex items-center gap-2 pt-3 text-[13px] text-muted-foreground">
+        <span className="truncate">{domains.join(" · ")}</span>
+        <span aria-hidden className="text-border">
+          ·
+        </span>
+        <span className="shrink-0 tabular-nums">
           {card.article_count} {card.article_count === 1 ? "source" : "sources"}
-          <ArrowRight
-            className="size-3 transition-transform group-hover:translate-x-0.5"
-            style={{ color: heat }}
-            aria-hidden
-          />
+        </span>
+        <span
+          aria-hidden
+          className="ml-auto shrink-0 text-border transition-transform duration-200 group-hover:translate-x-0.5"
+          style={{ color: momentumColor(card.momentum, 0.35) }}
+        >
+          →
         </span>
       </div>
     </Link>

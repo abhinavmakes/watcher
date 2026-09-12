@@ -73,8 +73,8 @@ export function FeedEmpty() {
       icon={<Inbox className="size-8 text-muted-foreground" aria-hidden />}
       title="No fresh signal yet"
     >
-      Watcher updates once a day and hides stale clusters. When the next daily run
-      completes, the day&apos;s briefing shows up here.
+      Watcher updates once a week and hides stories that have gone stale. The next
+      run will fill this in.
     </StatePanel>
   );
 }

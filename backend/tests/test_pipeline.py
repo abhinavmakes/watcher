@@ -14,6 +14,7 @@ from worker.pipeline import (
     ConnectorSpec,
     _build_synthesis_input,
     _deduplicate_fetched_articles,
+    _drop_stale_articles,
     _redact_urls,
     run_pipeline,
 )
@@ -75,6 +76,7 @@ def _article(
     title: str,
     source: str = "hn",
     canonical_url: str | None = None,
+    published_at: datetime | None = None,
 ) -> ArticleInput:
     url = f"https://example.com/{title.lower().replace(' ', '-')}"
     return ArticleInput.model_validate(
@@ -84,7 +86,7 @@ def _article(
             "url": url,
             "canonical_url": canonical_url or url,
             "content": "Article body",
-            "published_at": datetime(2026, 5, 21, tzinfo=UTC),
+            "published_at": published_at or datetime.now(UTC),
             "source_metadata": {},
         }
     )
@@ -569,3 +571,23 @@ async def test_run_pipeline_marks_a_successful_run_completed(
 
     assert summary.status is PipelineRunStatus.COMPLETED
     assert summary.error_message is None
+
+
+def test_drop_stale_articles_keeps_fresh_and_undated_drops_old() -> None:
+    now = datetime(2026, 9, 12, tzinfo=UTC)
+    fresh = _article("Fresh", canonical_url="https://example.com/fresh")
+    old = _article("Old", canonical_url="https://example.com/old")
+    undated = _article("Undated", canonical_url="https://example.com/undated")
+    naive_old = _article("Naive", canonical_url="https://example.com/naive")
+    fresh = fresh.model_copy(update={"published_at": now - timedelta(days=3)})
+    old = old.model_copy(update={"published_at": now - timedelta(days=400)})
+    undated = undated.model_copy(update={"published_at": None})
+    # Feeds without a timezone parse naive; comparing one to an aware `now` raises.
+    naive_old = naive_old.model_copy(
+        update={"published_at": datetime(2023, 1, 1)}  # noqa: DTZ001
+    )
+
+    kept, dropped = _drop_stale_articles([fresh, old, undated, naive_old], now, 14)
+
+    assert [a.title for a in kept] == ["Fresh", "Undated"]
+    assert dropped == 2

@@ -65,7 +65,7 @@ export function DetailNotFound() {
       icon={<FileQuestion className="size-8 text-muted-foreground" aria-hidden />}
       title="Cluster not found"
     >
-      This story isn&apos;t in the briefing — it may have gone stale, or the link is
+      This story is not in the briefing. It may have gone stale, or the link is
       wrong.
     </DetailPanel>
   );

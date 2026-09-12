@@ -156,10 +156,10 @@ function NoiseStage({ progress }: { progress: MotionValue<number> }) {
   return (
     <motion.div style={{ opacity, y }} className="flex flex-col gap-1">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-red-400/80">
+        <span className="font-mono text-[10px] uppercase tracking-wider text-red-600/80">
           Dropped noise
         </span>
-        <span className={`${NUM} text-red-400/80`}>−{NOISE}</span>
+        <span className={`${NUM} text-red-600/80`}>−{NOISE}</span>
       </div>
       <p className={CAPTION}>low-quality & off-topic, filtered out</p>
       <div className="relative h-2 w-full overflow-hidden rounded-full bg-border/25">
@@ -220,7 +220,7 @@ export function PipelineAnimation() {
         <span className="tabular-nums text-foreground">
           <Count progress={progress} to={FEEDS} at={0.02} />
         </span>
-        feeds monitored · today&apos;s run
+        feeds monitored · latest run
       </Reveal>
 
       <StatStage
@@ -274,7 +274,7 @@ function FunnelStatic({ hot, stories }: { hot: HotStory; stories: number }) {
       <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
         <span className="size-1.5 rounded-full bg-emerald-500" />
         <span className="tabular-nums text-foreground">{FEEDS}</span>
-        feeds monitored · today&apos;s run
+        feeds monitored · latest run
       </div>
 
       <div className={row}>
@@ -288,10 +288,10 @@ function FunnelStatic({ hot, stories }: { hot: HotStory; stories: number }) {
 
       <div className={`${row} opacity-60`}>
         <div className="flex items-baseline justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-red-400/80">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-red-600/80">
             Dropped noise
           </span>
-          <span className={`${NUM} text-red-400/80`}>−{NOISE}</span>
+          <span className={`${NUM} text-red-600/80`}>−{NOISE}</span>
         </div>
         <p className={CAPTION}>low-quality & off-topic, filtered out</p>
         <div className="relative h-2 w-full overflow-hidden rounded-full bg-border/25">

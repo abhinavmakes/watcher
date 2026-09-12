@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     embedding_batch_size: int = Field(default=128, ge=1)
 
     pipeline_interval_minutes: int = Field(default=30, ge=1)
+    # Feeds return their last N entries regardless of date, so a newly added blog
+    # backfills years of archive on its first fetch. Momentum scores arrival time, not
+    # publication time, so those archives rank as breaking news. 14 days suits a weekly
+    # briefing; articles with no date at all are kept, because dropping on unknown is
+    # the more destructive guess.
+    max_article_age_days: int = Field(default=14, ge=1)
     hn_fetch_limit: int = Field(default=30, ge=1)
     rss_fetch_limit: int = Field(default=50, ge=1)
     rss_feed_urls: str = ""

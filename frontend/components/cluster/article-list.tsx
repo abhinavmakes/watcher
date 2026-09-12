@@ -22,14 +22,14 @@ function ArticleRow({ article }: { article: ClusterArticleRef }) {
   const body = (
     <>
       <div className="flex min-w-0 flex-col gap-1">
-        <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+        <span className="text-[13px] text-muted-foreground">
           {article.source}
         </span>
         <span className="text-pretty text-sm text-foreground group-hover:underline group-hover:decoration-1 group-hover:underline-offset-2">
           {article.title}
         </span>
         {host && (
-          <span className="font-mono text-[11px] text-muted-foreground">{host}</span>
+          <span className="text-[13px] text-muted-foreground">{host}</span>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2 pt-0.5">
@@ -69,7 +69,7 @@ function ArticleRow({ article }: { article: ClusterArticleRef }) {
 export function ArticleList({ articles }: { articles: ClusterArticleRef[] }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+      <h2 className="text-base font-semibold tracking-tight text-foreground">
         Sources · {articles.length}
       </h2>
       {articles.length === 0 ? (

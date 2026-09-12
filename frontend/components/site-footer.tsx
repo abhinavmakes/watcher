@@ -3,15 +3,13 @@ import { GITHUB_URL } from "@/lib/site";
 
 export function SiteFooter() {
   return (
-    <footer className="flex flex-col gap-3 border-t border-border/60 py-8 sm:flex-row sm:items-center sm:justify-between">
-      <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-        Watcher · daily AI briefing
-      </span>
+    <footer className="flex flex-col gap-3 border-t border-border pt-6 text-[13px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <span>Watcher. A weekly AI briefing, built in the open.</span>
       <a
         href={GITHUB_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+        className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
       >
         <GithubMark className="size-3.5" />
         github.com/abhinavmakes/watcher

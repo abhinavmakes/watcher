@@ -12,7 +12,7 @@ interface DomainFilterProps {
 export function DomainFilter({ domains, active, onSelect }: DomainFilterProps) {
   return (
     <div
-      className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[11px] uppercase tracking-wider"
+      className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px]"
       role="group"
       aria-label="Filter by domain"
     >
@@ -22,7 +22,7 @@ export function DomainFilter({ domains, active, onSelect }: DomainFilterProps) {
         aria-pressed={active === null}
         className={`transition-colors ${
           active === null
-            ? "text-foreground underline decoration-1 underline-offset-4"
+            ? "font-medium text-foreground"
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
@@ -40,7 +40,7 @@ export function DomainFilter({ domains, active, onSelect }: DomainFilterProps) {
             aria-pressed={selected}
             className={`inline-flex items-center gap-1.5 transition-colors ${
               selected
-                ? "text-foreground underline decoration-1 underline-offset-4"
+                ? "font-medium text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >

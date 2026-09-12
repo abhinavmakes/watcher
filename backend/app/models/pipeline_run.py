@@ -23,6 +23,7 @@ class PipelineRunSummary(BaseModel):
     articles_fetched: int = 0
     articles_classified: int = 0
     articles_skipped_known: int = 0
+    articles_skipped_old: int = 0
     clusters_updated: int = 0
     clusters_created: int = 0
     clusters_scored: int = 0

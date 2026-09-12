@@ -5,20 +5,17 @@ import { GITHUB_URL } from "@/lib/site";
 
 export function SiteHeader() {
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-border/60 pb-4">
-      <Link href="/" className="flex items-baseline gap-3">
-        <span className="font-mono text-sm font-semibold tracking-[0.25em] text-foreground">
-          WATCHER
+    <header className="flex items-center justify-between gap-4 py-1">
+      <Link href="/" className="flex items-baseline gap-2.5">
+        <span className="text-[15px] font-semibold tracking-tight text-foreground">
+          Watcher
         </span>
-        <span className="hidden text-sm text-muted-foreground sm:inline">
-          The daily AI briefing
+        <span className="hidden text-[13px] text-muted-foreground sm:inline">
+          a weekly AI briefing
         </span>
       </Link>
-      <nav className="flex items-center gap-5 font-mono text-xs uppercase tracking-wider text-muted-foreground">
-        <Link
-          href="/how-it-works"
-          className="transition-colors hover:text-foreground"
-        >
+      <nav className="flex items-center gap-5 text-[13px] text-muted-foreground">
+        <Link href="/engineering" className="transition-colors hover:text-foreground">
           How it works
         </Link>
         <a
