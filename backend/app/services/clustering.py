@@ -25,7 +25,13 @@ def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
     dot_product = sum(a * b for a, b in zip(vec1, vec2, strict=True))
     norm1 = math.sqrt(sum(a * a for a in vec1))
     norm2 = math.sqrt(sum(b * b for b in vec2))
-    return dot_product / (norm1 * norm2)
+    denominator = norm1 * norm2
+    if denominator == 0.0:
+        # A zero vector has no direction, so it is similar to nothing. Returning 0.0 keeps
+        # the article out of every merge instead of raising ZeroDivisionError mid-run — and
+        # a crash here writes no pipeline_runs row at all.
+        return 0.0
+    return dot_product / denominator
 
 
 def _shares_entity(left: list[str], right: Iterable[str]) -> bool:

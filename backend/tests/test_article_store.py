@@ -144,6 +144,7 @@ class FakeSelectQuery:
         self.selected: str | None = None
         self.in_column: str | None = None
         self.in_values: list[str] | None = None
+        self.in_batches: list[list[str]] = []
 
     def select(self, columns: str) -> "FakeSelectQuery":
         self.selected = columns
@@ -152,6 +153,7 @@ class FakeSelectQuery:
     def in_(self, column: str, values: list[str]) -> "FakeSelectQuery":
         self.in_column = column
         self.in_values = values
+        self.in_batches.append(list(values))
         return self
 
     async def execute(self) -> SimpleNamespace:
@@ -184,6 +186,22 @@ async def test_fetch_existing_canonical_urls_returns_persisted_subset() -> None:
         "https://example.com/known",
         "https://example.com/fresh",
     ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_existing_canonical_urls_batches_the_in_filter() -> None:
+    # postgREST puts `in.(...)` in the request URL; an unbatched filter over a large fetch
+    # overflows the gateway's URL-length limit and returns 400. Seen in production on
+    # 2026-08-02 with 280 articles across 11 feeds.
+    urls = [f"https://example.com/{index}" for index in range(45)]
+    gateway = FakeSelectGateway([{"canonical_url": urls[0]}])
+
+    existing = await fetch_existing_canonical_urls(cast(SupabaseGateway, gateway), urls)
+
+    assert [len(batch) for batch in gateway.query.in_batches] == [20, 20, 5]
+    assert [url for batch in gateway.query.in_batches for url in batch] == urls
+    assert gateway.table_calls == ["articles"] * 3
+    assert existing == {urls[0]}
 
 
 @pytest.mark.asyncio

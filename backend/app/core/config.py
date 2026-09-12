@@ -47,7 +47,11 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = Field(default=None, repr=False)
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = Field(default=768, ge=1)
-    embedding_max_content_chars: int = Field(default=2000, ge=1)
+    # 4x the original 2000: the first 2000 chars of a long-form engineering post are largely
+    # boilerplate intro, which made vectors similar within a publisher rather than within a
+    # subject. Stops well short of the model's ~30k-char limit because one vector over a 21k-char
+    # document averages toward mush — that is the problem chunking solves, not a wider window.
+    embedding_max_content_chars: int = Field(default=8000, ge=1)
     embedding_batch_size: int = Field(default=128, ge=1)
     encryption_key: SecretStr | None = Field(default=None, repr=False)
 

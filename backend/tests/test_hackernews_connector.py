@@ -118,3 +118,29 @@ async def test_fetch_articles_raises_when_topstories_request_fails() -> None:
     async with httpx.AsyncClient() as client:
         with pytest.raises(httpx.HTTPStatusError):
             await HackerNewsConnector(client).fetch_articles(limit=10)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_ask_hn_text_is_stripped_of_html() -> None:
+    # HN's `text` field is HTML. Leaving it raw sent <p> tags and escaped entities into
+    # the classifier prompt and the embedding input, while RSS bodies arrived clean.
+    respx.get(f"{HN_BASE_URL}/topstories.json").mock(return_value=httpx.Response(200, json=[201]))
+    respx.get(f"{HN_BASE_URL}/item/201.json").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "id": 201,
+                "type": "story",
+                "by": "carol",
+                "time": 1_700_000_020,
+                "title": "Ask HN: what&#x27;s your stack?",
+                "text": "<p>We run <i>Postgres</i>.</p><p>It&#x27;s fine.</p>",
+            },
+        )
+    )
+
+    async with httpx.AsyncClient() as client:
+        articles = await HackerNewsConnector(client).fetch_articles(limit=10)
+
+    assert articles[0].content == "We run Postgres . It's fine."

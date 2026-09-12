@@ -120,3 +120,24 @@ def test_phase_a_entity_anchored_join_below_cosine_threshold() -> None:
 
     assert result.updated == {"c1": ["https://d"]}
     assert result.new_clusters == []
+
+
+def test_cosine_similarity_returns_zero_for_a_zero_vector() -> None:
+    # An all-zero embedding used to raise ZeroDivisionError mid-run, which killed the
+    # pipeline before it could write a pipeline_runs row.
+    assert cosine_similarity([0.0, 0.0], [1.0, 0.0]) == 0.0
+    assert cosine_similarity([0.0, 0.0], [0.0, 0.0]) == 0.0
+
+
+def test_cluster_articles_survives_a_zero_vector() -> None:
+    zero = _embedded("https://example.com/zero", [0.0, 0.0], [ArticleDomain.LLMS])
+    normal = _embedded("https://example.com/normal", [1.0, 0.0], [ArticleDomain.LLMS])
+
+    result = cluster_articles([zero, normal], [])
+
+    # Similar to nothing, so it stays a singleton rather than crashing the run.
+    assert result.new_clusters == []
+    assert sorted(result.orphans) == [
+        "https://example.com/normal",
+        "https://example.com/zero",
+    ]

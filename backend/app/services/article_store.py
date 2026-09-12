@@ -16,13 +16,18 @@ async def fetch_existing_canonical_urls(
     classify only unseen articles and avoid re-paying the per-article LLM cost."""
     if not canonical_urls:
         return set()
-    result = await (
-        gateway.table("articles")
-        .select("canonical_url")
-        .in_("canonical_url", list(canonical_urls))
-        .execute()
-    )
-    return {row["canonical_url"] for row in result.data}
+
+    urls = list(canonical_urls)
+    existing: set[str] = set()
+    for start in range(0, len(urls), _IN_FILTER_BATCH_SIZE):
+        result = await (
+            gateway.table("articles")
+            .select("canonical_url")
+            .in_("canonical_url", urls[start : start + _IN_FILTER_BATCH_SIZE])
+            .execute()
+        )
+        existing.update(row["canonical_url"] for row in result.data)
+    return existing
 
 
 async def insert_articles(
