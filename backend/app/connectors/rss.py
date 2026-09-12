@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -11,6 +12,13 @@ from app.models.article import ArticleInput
 from app.services.html_text import clean_html
 from app.services.url_normalizer import normalize_url
 
+logger = logging.getLogger(__name__)
+
+# A feed host that turns hostile (or is compromised) can return an unbounded body, and
+# reading the whole response into memory has no ceiling. 10 MB is far above any real feed
+# — the largest full-text feed in the mix is a few hundred KB — so this only trips on abuse.
+_MAX_FEED_BYTES = 10 * 1024 * 1024
+
 
 class RssConnector:
     def __init__(self, client: httpx.AsyncClient, feed_urls: list[str]) -> None:
@@ -19,11 +27,22 @@ class RssConnector:
 
     async def _fetch_feed(self, feed_url: str) -> bytes | None:
         try:
-            resp = await self._client.get(feed_url)
-            resp.raise_for_status()
+            async with self._client.stream("GET", feed_url) as resp:
+                resp.raise_for_status()
+                chunks: list[bytes] = []
+                total = 0
+                async for chunk in resp.aiter_bytes():
+                    total += len(chunk)
+                    if total > _MAX_FEED_BYTES:
+                        logger.warning(
+                            "feed_exceeded_byte_cap",
+                            extra={"feed_url": feed_url, "bytes": total},
+                        )
+                        return None
+                    chunks.append(chunk)
         except httpx.HTTPError:
             return None
-        return resp.content
+        return b"".join(chunks)
 
     async def fetch_articles(self, limit: int) -> list[ArticleInput]:
         if limit < 1:

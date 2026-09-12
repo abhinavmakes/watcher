@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     rate_limit: str = "60/minute"
     rate_limit_enabled: bool = True
+    # Number of proxies between the client and this app. 0 = nothing in front, so
+    # X-Forwarded-For is attacker-supplied and must be ignored. Set to 1 behind a single
+    # ALB/CDN. Secure by default: an unset value cannot be spoofed.
+    trusted_proxy_hops: int = Field(default=0, ge=0)
 
     supabase_url: AnyHttpUrl | None = None
     supabase_secret_key: SecretStr | None = Field(default=None, repr=False)
@@ -53,7 +57,6 @@ class Settings(BaseSettings):
     # document averages toward mush — that is the problem chunking solves, not a wider window.
     embedding_max_content_chars: int = Field(default=8000, ge=1)
     embedding_batch_size: int = Field(default=128, ge=1)
-    encryption_key: SecretStr | None = Field(default=None, repr=False)
 
     pipeline_interval_minutes: int = Field(default=30, ge=1)
     hn_fetch_limit: int = Field(default=30, ge=1)
@@ -76,7 +79,6 @@ class Settings(BaseSettings):
         "supabase_publishable_key",
         "claude_api_key",
         "openai_api_key",
-        "encryption_key",
         mode="before",
     )
     @classmethod
@@ -118,12 +120,6 @@ class Settings(BaseSettings):
         if self.openai_api_key is None:
             return None
         return self.openai_api_key.get_secret_value()
-
-    @property
-    def encryption_key_value(self) -> str | None:
-        if self.encryption_key is None:
-            return None
-        return self.encryption_key.get_secret_value()
 
 
 settings = Settings()

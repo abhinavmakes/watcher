@@ -30,3 +30,25 @@ export interface ClusterArticleRef {
 export interface ClusterDetail extends ClusterCard {
   articles: ClusterArticleRef[];
 }
+
+export type RunStatus = "running" | "completed" | "failed";
+
+export interface RunSummary {
+  id: string;
+  started_at: string;
+  completed_at: string | null;
+  status: RunStatus;
+  articles_fetched: number;
+  articles_classified: number;
+  clusters_created: number;
+  clusters_updated: number;
+  cost_usd: number;
+  tokens_in: number;
+  tokens_out: number;
+  stage_timings: Record<string, number>;
+  error_message?: string | null;
+}
+
+export interface RunPage {
+  runs: RunSummary[];
+}

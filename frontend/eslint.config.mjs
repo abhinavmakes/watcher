@@ -13,6 +13,12 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    // The frontend renders LLM output and feed text. React escaping is the XSS defence;
+    // this makes removing it a build failure rather than a silent regression the CSP
+    // cannot catch (script-src allows 'unsafe-inline').
+    rules: { "react/no-danger": "error" },
+  },
 ]);
 
 export default eslintConfig;

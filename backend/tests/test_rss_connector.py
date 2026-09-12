@@ -3,7 +3,9 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 import respx
+from pytest import MonkeyPatch
 
+from app.connectors import rss as rss_module
 from app.connectors.rss import RssConnector
 
 FEED_URL = "https://example.com/feed.xml"
@@ -67,6 +69,18 @@ async def test_fetch_articles_skips_failed_feeds() -> None:
         )
 
     assert [article.title for article in articles] == ["First Post"]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_oversized_feed_is_dropped_and_run_continues(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(rss_module, "_MAX_FEED_BYTES", 10)
+    respx.get(FEED_URL).mock(return_value=httpx.Response(200, content=_feed_xml()))
+
+    async with httpx.AsyncClient() as client:
+        articles = await RssConnector(client, [FEED_URL]).fetch_articles(limit=10)
+
+    assert articles == []
 
 
 @pytest.mark.asyncio

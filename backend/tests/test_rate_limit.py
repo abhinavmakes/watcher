@@ -1,12 +1,43 @@
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pytest import MonkeyPatch
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from starlette.requests import Request
 
+from app.core.config import settings
 from app.core.rate_limit import _client_ip, rate_limit_handler
 from app.main import app as real_app
+
+
+def _request(headers: dict[str, str], client_ip: str = "9.9.9.9") -> Request:
+    scope = {
+        "type": "http",
+        "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()],
+        "client": (client_ip, 12345),
+    }
+    return Request(scope)
+
+
+def test_client_ip_ignores_xff_when_no_proxy_is_trusted(monkeypatch: MonkeyPatch) -> None:
+    # hops=0 (nothing in front of this app): XFF is entirely attacker-supplied.
+    monkeypatch.setattr(settings, "trusted_proxy_hops", 0)
+    request = _request({"x-forwarded-for": "10.0.0.1"})
+
+    assert _client_ip(request) == "9.9.9.9"
+
+
+def test_client_ip_takes_rightmost_hop_when_one_proxy_is_trusted(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    # Each proxy appends the peer it received from, so with one trusted proxy the real
+    # client is the rightmost entry, not the attacker-controlled leftmost one.
+    monkeypatch.setattr(settings, "trusted_proxy_hops", 1)
+    request = _request({"x-forwarded-for": "1.2.3.4, 5.6.7.8"})
+
+    assert _client_ip(request) == "5.6.7.8"
 
 
 def _tiny_app() -> FastAPI:

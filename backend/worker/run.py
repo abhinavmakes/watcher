@@ -54,6 +54,7 @@ async def _run_once() -> None:
         timeout=20.0,
         headers={"User-Agent": _USER_AGENT},
         follow_redirects=True,
+        max_redirects=5,
     ) as client:
         connector_specs = [
             ConnectorSpec(

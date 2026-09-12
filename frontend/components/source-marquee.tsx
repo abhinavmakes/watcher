@@ -1,21 +1,21 @@
 // A slow horizontal marquee of the outlets Watcher reads. Track holds two copies of
 // the list and translates -50% so it loops seamlessly; pauses on hover; edges fade
-// out; static under prefers-reduced-motion. Representative real names/URLs — set
-// SOURCES to your actual RSS_FEED_URLS list so it matches what the pipeline fetches.
-const TOTAL_FEEDS = 21;
+// out; static under prefers-reduced-motion. Kept in sync with RSS_FEED_URLS + HN —
+// update both if the feed list changes.
+const TOTAL_FEEDS = 12;
 const SOURCES = [
   { name: "Hacker News", url: "https://news.ycombinator.com" },
-  { name: "The Verge", url: "https://www.theverge.com" },
-  { name: "Ars Technica", url: "https://arstechnica.com" },
-  { name: "TechCrunch", url: "https://techcrunch.com" },
-  { name: "VentureBeat", url: "https://venturebeat.com" },
-  { name: "MIT Tech Review", url: "https://www.technologyreview.com" },
-  { name: "arXiv", url: "https://arxiv.org" },
-  { name: "Hugging Face", url: "https://huggingface.co/blog" },
-  { name: "Anthropic", url: "https://www.anthropic.com/news" },
-  { name: "OpenAI", url: "https://openai.com/news" },
-  { name: "Google AI", url: "https://blog.google/technology/ai/" },
   { name: "Simon Willison", url: "https://simonwillison.net" },
+  { name: "Ahead of AI", url: "https://magazine.sebastianraschka.com" },
+  { name: "Lilian Weng", url: "https://lilianweng.github.io" },
+  { name: "BAIR", url: "https://bair.berkeley.edu/blog/" },
+  { name: "The Pragmatic Engineer", url: "https://newsletter.pragmaticengineer.com" },
+  { name: "AWS Machine Learning", url: "https://aws.amazon.com/blogs/machine-learning/" },
+  { name: "AWS Architecture", url: "https://aws.amazon.com/blogs/architecture/" },
+  { name: "Meta Engineering", url: "https://engineering.fb.com" },
+  { name: "Google AI Blog", url: "https://ai.googleblog.com" },
+  { name: "Julia Evans", url: "https://jvns.ca" },
+  { name: "GitHub Blog", url: "https://github.blog" },
 ];
 
 export function SourceMarquee() {

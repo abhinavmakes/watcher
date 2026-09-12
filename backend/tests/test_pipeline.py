@@ -14,8 +14,20 @@ from worker.pipeline import (
     ConnectorSpec,
     _build_synthesis_input,
     _deduplicate_fetched_articles,
+    _redact_urls,
     run_pipeline,
 )
+
+
+def test_redact_urls_keeps_host_drops_path_and_query() -> None:
+    message = "Connect error for https://newsletter.example.com/feed?token=secret123 (timeout)"
+
+    expected = "Connect error for https://newsletter.example.com... (timeout)"
+    assert _redact_urls(message) == expected
+    # Credentials in the URL are the thing worth redacting; the host is not.
+    assert _redact_urls("GET https://u:pw@feed.example/x?t=1 failed") == (
+        "GET https://feed.example... failed"
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +35,9 @@ def _stub_classifier(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch classify_article, the rate-limit sleep, and embed_texts so pipeline tests stay
     hermetic and fast."""
 
-    async def fake_classify_article(article: ArticleInput) -> ClassificationOutput:
+    async def fake_classify_article(
+        article: ArticleInput, *, usage: object | None = None
+    ) -> ClassificationOutput:
         return ClassificationOutput(
             domains=[ArticleDomain.LLMS],
             relevance_score=0.5,

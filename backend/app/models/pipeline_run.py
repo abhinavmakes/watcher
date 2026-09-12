@@ -29,3 +29,7 @@ class PipelineRunSummary(BaseModel):
     clusters_stale: int = 0
     source_stats: dict[str, SourceFetchStats] = Field(default_factory=dict)
     error_message: str | None = None
+    cost_usd: float = 0.0
+    tokens_in: int = 0
+    tokens_out: int = 0
+    stage_timings: dict[str, float] = Field(default_factory=dict)
