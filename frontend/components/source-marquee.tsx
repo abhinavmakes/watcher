@@ -2,11 +2,16 @@
 // the list and translates -50% so it loops seamlessly; pauses on hover; edges fade
 // out; static under prefers-reduced-motion. Kept in sync with RSS_FEED_URLS + HN —
 // update both if the feed list changes.
-const TOTAL_FEEDS = 12;
+const TOTAL_FEEDS = 19;
 const SOURCES = [
   { name: "Hacker News", url: "https://news.ycombinator.com" },
-  { name: "Simon Willison", url: "https://simonwillison.net" },
+  { name: "Latent Space", url: "https://www.latent.space" },
+  { name: "Chip Huyen", url: "https://huyenchip.com" },
+  { name: "Interconnects", url: "https://www.interconnects.ai" },
+  { name: "Answer.AI", url: "https://www.answer.ai" },
+  { name: "Hamel Husain", url: "https://hamel.dev" },
   { name: "Ahead of AI", url: "https://magazine.sebastianraschka.com" },
+  { name: "Simon Willison", url: "https://simonwillison.net" },
   { name: "Lilian Weng", url: "https://lilianweng.github.io" },
   { name: "BAIR", url: "https://bair.berkeley.edu/blog/" },
   { name: "The Pragmatic Engineer", url: "https://newsletter.pragmaticengineer.com" },
@@ -14,6 +19,8 @@ const SOURCES = [
   { name: "AWS Architecture", url: "https://aws.amazon.com/blogs/architecture/" },
   { name: "Meta Engineering", url: "https://engineering.fb.com" },
   { name: "Google AI Blog", url: "https://ai.googleblog.com" },
+  { name: "Cloudflare", url: "https://blog.cloudflare.com" },
+  { name: "Netflix Tech", url: "https://netflixtechblog.com" },
   { name: "Julia Evans", url: "https://jvns.ca" },
   { name: "GitHub Blog", url: "https://github.blog" },
 ];
