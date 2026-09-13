@@ -11,7 +11,7 @@ export function SiteHeader() {
           Watcher
         </span>
         <span className="hidden text-[13px] text-muted-foreground sm:inline">
-          an AI news feed
+          an intelligent news feed
         </span>
       </Link>
       <nav className="flex items-center gap-5 text-[13px] text-muted-foreground">

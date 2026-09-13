@@ -98,6 +98,41 @@
   html {
     @apply font-sans;
   }
+  /* Tailwind v4 dropped v3's Preflight rule, so buttons fall back to the browser default
+     arrow. On a design with no borders or fills, the cursor is the only affordance left. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  /* Scrollbars, in both syntaxes so every engine gets one. `scrollbar-*` is the standard
+     and covers Firefox and Chromium 121+; the `::-webkit-` block covers Safari and older
+     Chromium, which ignore the standard properties. Colours are the page's own tokens, so
+     the bar reads as part of the paper rather than a piece of browser chrome. */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    /* Padding the thumb with a transparent border needs the background clipped to the
+       content box, otherwise the border paints solid and the bar fills the full gutter. */
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
   /* Numerals only. Mono is information here, not decoration. */
   .tabular-nums {
     font-variant-numeric: tabular-nums;

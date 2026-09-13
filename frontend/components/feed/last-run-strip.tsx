@@ -17,30 +17,13 @@ function formatRelativeTime(iso: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-function formatDuration(startedAt: string, completedAt: string | null): string | null {
-  if (!completedAt) return null;
-  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return null;
-  const minutes = Math.floor(ms / 60_000);
-  const seconds = Math.round((ms % 60_000) / 1000);
-  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-}
-
-function formatCost(usd: number): string {
-  if (usd <= 0) return "$0.00";
-  if (usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
-}
-
 export function LastRunStrip({ run }: { run: RunSummary }) {
   const timestamp = run.completed_at ?? run.started_at;
-  const duration = formatDuration(run.started_at, run.completed_at);
+  // Run duration and spend stay off the feed. They are operator numbers, not reader ones.
   const parts = [
     `${run.articles_fetched} articles`,
     `${run.clusters_created} new stories`,
-    duration,
-    formatCost(run.cost_usd),
-  ].filter(Boolean);
+  ];
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">

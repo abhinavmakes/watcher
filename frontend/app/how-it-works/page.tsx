@@ -7,16 +7,12 @@ import { PipelineStages } from "@/components/how-it-works/pipeline-stages";
 import { Reveal } from "@/components/reveal";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { DECISIONS_URL } from "@/lib/site";
 
 export const metadata = {
   title: "How it works | Watcher",
   description:
     "How Watcher works: architecture, pipeline stages, the clustering rule, ranking, cost, evaluation and the main design decisions.",
 };
-
-const LINK_CLASS =
-  "font-medium text-foreground underline decoration-foreground/40 underline-offset-4 transition-colors hover:decoration-foreground";
 
 function Section({
   title,
@@ -287,20 +283,6 @@ export default function HowItWorks() {
           </li>
         </ul>
       </Section>
-
-      <p className="max-w-[68ch] text-pretty leading-relaxed text-muted-foreground">
-        The history behind these choices, including the ones that were wrong the first
-        time, is recorded in{" "}
-        <a
-          href={DECISIONS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={LINK_CLASS}
-        >
-          DECISIONS.md
-        </a>
-        .
-      </p>
 
       <SiteFooter />
     </main>

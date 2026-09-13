@@ -10,7 +10,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "Watcher | An AI news feed that does the reading for you",
   description:
-    "Every week, the system reads twenty-three AI and engineering sources and uses AI to fold coverage of the same story into one short briefing.",
+    "Watcher reads what is new across AI and software engineering each week, throws out the noise, and groups articles covering the same event into one short briefing.",
 };
 
 export default function RootLayout({
