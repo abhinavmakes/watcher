@@ -14,66 +14,46 @@ import { motion } from "motion/react";
 interface Stage {
   label: string;
   tech: string;
-  body: string[];
+  body: string;
   Icon: LucideIcon;
 }
 
-// Each stage gets the mechanism first and then the decision behind it, because the
-// mechanism is the boring half and the decision is the half worth reading.
 const STAGES: Stage[] = [
   {
     label: "Fetch and dedup",
     tech: "Hacker News plus 22 RSS feeds",
     Icon: Rss,
-    body: [
-      "Both sources are pulled at the same time and flattened into one record shape, which matters more than it sounds. Hacker News gives me a story object with a score and a comment count and usually no body text at all. An RSS entry gives me a body and no engagement signal. Everything downstream reads one normalized article, so neither source leaks its shape into the rest of the system.",
-      "Identity is the canonical URL, stripped of tracking parameters, and deduplication happens in three places: a set within the run, a lookup against what is already stored, and a conflict rule on insert. The middle one is the expensive one to get right and the cheapest thing in the system. On the most recent run it skipped 120 of 374 articles before a single model call was made.",
-    ],
+    body: "Hacker News and 22 RSS feeds are fetched concurrently and normalized into one article record, identified by canonical URL. Articles already stored, repeated within the run, or published more than 14 days ago are dropped before any model call.",
   },
   {
     label: "Classify",
-    tech: "Claude Haiku, structured output",
+    tech: "Claude Haiku 4.5, structured output",
     Icon: Filter,
-    body: [
-      "Every surviving article is read by Claude Haiku, which returns a topic, a relevance score from 0 to 1, a noise flag, and the named entities the story is about. Those entities are free in the sense that the model was going to read the article anyway, and they turn out to carry the clustering stage later on.",
-      "Model choice here is tiered by volume against stakes rather than chosen once for the whole system. This stage runs on everything, so it takes the cheap model. I began on Gemini Flash-Lite and moved off it after it hit a hard requests-per-day ceiling in the middle of a run and simply stopped. Prepaid credits give me a spending limit I control. A daily quota is a limit that decides for me, usually at the worst possible moment.",
-    ],
+    body: "Each new article gets one structured call that returns topics, a relevance score from 0 to 1, a noise flag and the named entities it covers. Articles flagged as noise stop here. Haiku is used because this call runs on every article.",
   },
   {
     label: "Embed",
     tech: "text-embedding-3-small, 768 dimensions",
     Icon: Boxes,
-    body: [
-      "Whatever clears the noise flag becomes a vector. 768 dimensions rather than the full 1536 because the model supports truncation and the database column is sized to match, which halves the index size for a quality difference I could not detect at this corpus size. I build the input by hand: headline, then article body up to a character budget, then the tags the feed supplies.",
-      "That character budget is the part I got wrong. It was set to 2,000 back when every article was a short blurb, and nothing made me revisit it when the feeds moved to long engineering posts. The result was that a 20,000 character article was represented by its introduction, which on a corporate engineering blog is mostly boilerplate that every post on that blog shares. The whole stage takes 10 seconds, which is the real lesson: the cheap stage was never worth optimizing and was always worth checking.",
-    ],
+    body: "Each remaining article becomes one vector built from its headline, the first 8,000 characters of its body and its feed tags. The model's 1,536 dimensions are truncated to 768 to match the database column.",
   },
   {
     label: "Cluster",
-    tech: "hand-rolled cosine, entity anchored",
+    tech: "hand-written cosine, entity anchored",
     Icon: Network,
-    body: [
-      "A greedy single pass. Each new article is compared against the running average vector of every story that is still open, meaning its first article was published within the last week, and joins the closest one if the rule below passes. Stories that never gain a second member are discarded rather than stored, which is why the feed shows stories rather than articles.",
-      "I wrote the similarity by hand instead of importing a clustering library. That was deliberate and I would defend it: the merge rule is the single most opinionated thing in this project, and a library would have imposed its own algorithm while hiding the decision I most wanted to keep readable. The performance argument does not apply either. The entire clustering stage takes under two seconds.",
-    ],
+    body: "A single greedy pass compares each new article with the average vector of every open story and joins the closest one when the clustering rule matches. A story stays open for seven days from its first article. Groups that never reach two articles are dropped.",
   },
   {
     label: "Synthesize",
-    tech: "Claude Sonnet, new and growing stories",
+    tech: "Claude Sonnet 4.6, new and growing stories",
     Icon: Sparkles,
-    body: [
-      "Each new story goes to Claude Sonnet, which writes the summary and the single line about why it matters. When an existing story gains articles, it goes back to Sonnet with its newest coverage, so the headline keeps matching what is inside instead of freezing at whatever the first run saw. This is the only place the expensive model appears, and it is justified by being the only text a human actually reads.",
-      "The model receives a purpose-built object containing headlines, article text and source names. It does not receive my internal cluster, which carries vectors, centroids and threshold state. That separation is not tidiness. Prompt content is a contract, and handing a model a pile of embedding machinery is several hundred tokens of noise that measurably degrades the writing.",
-    ],
+    body: "New stories, and existing stories that gained articles, get one call that writes a headline, a summary and a one-line takeaway. The model receives headlines, article text and source names, all of them for a new story and the eight newest for a growing one, and never vectors or clustering state.",
   },
   {
     label: "Rank by momentum",
     tech: "recency weighted decay",
     Icon: Gauge,
-    body: [
-      "The number on every card. Each source in a story contributes a weight that halves every three days, counted from when the article was published rather than when the pipeline found it, and those weights are summed rather than averaged. Summing is the whole point: ten outlets covering something this week should outrank three, and averaging would collapse both to roughly the same value.",
-      "Every active story is rescored on every run, including ones that received nothing new. Going cold is a function of time passing, not of anything arriving, so a pass that only visits stories touched this run would never notice a story dying. The half-life sits deliberately below the staleness cutoff, so by the time a story is marked stale its newest member is already contributing almost nothing and the two signals agree instead of contradicting each other.",
-    ],
+    body: "Each article adds 0.5 to the power of its age in hours divided by 72, with age measured from publication. Scores are summed, so a story with more recent coverage ranks higher, and a card shows 100 × score ÷ (score + 5). A story with no article newer than 168 hours becomes stale and leaves the feed.",
   },
 ];
 
@@ -104,14 +84,9 @@ export function PipelineStages() {
                 </h3>
                 <span className="text-[13px] text-muted-foreground">{stage.tech}</span>
               </div>
-              {stage.body.map((paragraph) => (
-                <p
-                  key={paragraph.slice(0, 24)}
-                  className="max-w-[68ch] text-pretty leading-relaxed text-muted-foreground"
-                >
-                  {paragraph}
-                </p>
-              ))}
+              <p className="max-w-[68ch] text-pretty leading-relaxed text-muted-foreground">
+                {stage.body}
+              </p>
             </div>
           </motion.div>
         );

@@ -8,9 +8,9 @@ const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Watcher | A week of AI and tech, grouped so you read each story once",
+  title: "Watcher | An AI news feed that does the reading for you",
   description:
-    "Reads twenty-three AI and engineering sources once a week and folds coverage of the same thing into a single story, so you read it once instead of five times.",
+    "Every week, the system reads twenty-three AI and engineering sources and uses AI to fold coverage of the same story into one short briefing.",
 };
 
 export default function RootLayout({

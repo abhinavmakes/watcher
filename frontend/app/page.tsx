@@ -16,12 +16,12 @@ export default function Home() {
           was the site describing itself rather than the stories it found. */}
       <section className="flex max-w-2xl flex-col gap-2.5">
         <h1 className="text-balance text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
-          A week of AI and tech, grouped so you read each story once.
+          An AI news feed that does the reading for you.
         </h1>
         <p className="text-pretty leading-relaxed text-muted-foreground">
-          It reads twenty-three sources once a week, throws out the filler, and when several
-          of them cover the same thing it folds them into a single story instead of
-          handing you five copies of it.
+          Every week, the system reads twenty-three AI and engineering sources, throws
+          out the filler, then uses AI to group the articles covering the same story and
+          write one short briefing for each, so you read it once instead of five times.
         </p>
         <MomentumLegend />
         <p className="rounded-md border border-border bg-muted/40 px-3.5 py-2.5 text-[13px] leading-relaxed text-muted-foreground">
@@ -32,13 +32,12 @@ export default function Home() {
           point. I built this mostly to learn how these systems fit together end to end,
           and that is the half I would actually point you at:{" "}
           <Link
-            href="/engineering"
+            href="/how-it-works"
             className="font-medium text-foreground underline decoration-foreground/40 underline-offset-4 transition-colors hover:decoration-foreground"
           >
             see how it works
           </Link>
-          , which walks through every stage, the decisions behind them, and the ones I
-          got wrong.
+          , which covers every stage and the main decisions behind them.
         </p>
       </section>
 
@@ -52,7 +51,7 @@ export default function Home() {
           <p className="text-pretty leading-relaxed text-muted-foreground">
             Seven stages, start to finish, running on a schedule.{" "}
             <Link
-              href="/engineering"
+              href="/how-it-works"
               className="font-medium text-foreground underline decoration-foreground/40 underline-offset-4 transition-colors hover:decoration-foreground"
             >
               See how it works

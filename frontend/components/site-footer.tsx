@@ -4,7 +4,7 @@ import { GITHUB_URL } from "@/lib/site";
 export function SiteFooter() {
   return (
     <footer className="flex flex-col gap-3 border-t border-border pt-6 text-[13px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-      <span>Watcher. A weekly AI briefing, built in the open.</span>
+      <span>Watcher. An AI news feed, built in the open.</span>
       <a
         href={GITHUB_URL}
         target="_blank"

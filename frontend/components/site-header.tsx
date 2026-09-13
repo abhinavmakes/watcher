@@ -11,11 +11,11 @@ export function SiteHeader() {
           Watcher
         </span>
         <span className="hidden text-[13px] text-muted-foreground sm:inline">
-          a weekly AI briefing
+          an AI news feed
         </span>
       </Link>
       <nav className="flex items-center gap-5 text-[13px] text-muted-foreground">
-        <Link href="/engineering" className="transition-colors hover:text-foreground">
+        <Link href="/how-it-works" className="transition-colors hover:text-foreground">
           How it works
         </Link>
         <a

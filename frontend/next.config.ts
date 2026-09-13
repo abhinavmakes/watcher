@@ -39,6 +39,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // The page lived at /engineering, and links to it may already be shared.
+  async redirects() {
+    return [{ source: "/engineering", destination: "/how-it-works", permanent: true }];
+  },
 };
 
 export default nextConfig;
