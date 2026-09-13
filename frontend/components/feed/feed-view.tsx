@@ -16,6 +16,7 @@ import { LastRunStrip } from "@/components/feed/last-run-strip";
 import { useClusters } from "@/hooks/use-clusters";
 import { useLatestRun } from "@/hooks/use-latest-run";
 import { RateLimitError } from "@/lib/api";
+import type { ClusterPage } from "@/lib/types";
 
 function FeedStatus({
   total,
@@ -37,8 +38,8 @@ function FeedStatus({
   );
 }
 
-export function FeedView() {
-  const { page, error, isLoading, refresh } = useClusters();
+export function FeedView({ initialData }: { initialData?: ClusterPage }) {
+  const { page, error, isLoading, refresh } = useClusters(initialData);
   const { run } = useLatestRun();
   const [activeDomain, setActiveDomain] = useState<string | null>(null);
 
@@ -76,7 +77,7 @@ export function FeedView() {
       />
       {run && <LastRunStrip run={run} />}
 
-      {isLoading ? (
+      {isLoading && !page ? (
         <FeedSkeleton />
       ) : error instanceof RateLimitError ? (
         <FeedRateLimited

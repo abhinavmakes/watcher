@@ -33,9 +33,16 @@ export async function fetchJson<T>(
   params?: Record<string, string | number | undefined>,
 ): Promise<T> {
   // API_BASE_URL is relative ("/api") in production, where the frontend and API share a
-  // domain, and absolute in local dev. Resolving against the page origin handles both, and
-  // lets a preview deployment call its own API instead of production's.
-  const origin = typeof window === "undefined" ? "http://localhost" : window.location.origin;
+  // domain, and absolute in local dev. In the browser, resolve against the page origin.
+  // On the server there is no page origin, so use the Vercel deployment host, which the
+  // same-domain rewrite also serves; that lets a preview deployment call its own API
+  // instead of production's, in SSR as well as the browser.
+  const origin =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost";
   const url = new URL(`${API_BASE_URL}${path}`, origin);
   if (params) {
     for (const [key, value] of Object.entries(params)) {

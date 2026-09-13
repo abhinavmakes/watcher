@@ -5,8 +5,15 @@ import { StoryFold } from "@/components/home/story-fold";
 import { MomentumLegend } from "@/components/momentum-legend";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { getClusters } from "@/lib/clusters";
 
-export default function Home() {
+// Forces this fetch to run per-request instead of being baked in at build time, when
+// the API service may not yet be reachable.
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const initialClusters = await getClusters().catch(() => undefined);
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-6 sm:px-6 sm:py-8">
       <SiteHeader />
@@ -35,7 +42,7 @@ export default function Home() {
         <MomentumLegend />
       </section>
 
-      <FeedView />
+      <FeedView initialData={initialClusters} />
 
       <section className="flex flex-col gap-5 border-t border-border pt-10">
         <div className="flex max-w-2xl flex-col gap-2">
