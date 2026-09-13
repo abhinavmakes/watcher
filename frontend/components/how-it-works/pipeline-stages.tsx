@@ -23,7 +23,7 @@ interface Stage {
 const STAGES: Stage[] = [
   {
     label: "Fetch and dedup",
-    tech: "Hacker News plus 18 RSS feeds",
+    tech: "Hacker News plus 22 RSS feeds",
     Icon: Rss,
     body: [
       "Both sources are pulled at the same time and flattened into one record shape, which matters more than it sounds. Hacker News gives me a story object with a score and a comment count and usually no body text at all. An RSS entry gives me a body and no engagement signal. Everything downstream reads one normalized article, so neither source leaks its shape into the rest of the system.",
@@ -71,7 +71,7 @@ const STAGES: Stage[] = [
     tech: "recency weighted decay",
     Icon: Gauge,
     body: [
-      "The number on every card. Each source in a story contributes a weight that halves every 24 hours, and those weights are summed rather than averaged. Summing is the whole point: ten outlets arriving today should outrank three, and averaging would collapse both to roughly the same value and erase the accumulation signal entirely.",
+      "The number on every card. Each source in a story contributes a weight that halves every three days, counted from when the article was published rather than when the pipeline found it, and those weights are summed rather than averaged. Summing is the whole point: ten outlets covering something this week should outrank three, and averaging would collapse both to roughly the same value.",
       "Every active story is rescored on every run, including ones that received nothing new. Going cold is a function of time passing, not of anything arriving, so a pass that only visits stories touched this run would never notice a story dying. The half-life sits deliberately below the staleness cutoff, so by the time a story is marked stale its newest member is already contributing almost nothing and the two signals agree instead of contradicting each other.",
     ],
   },

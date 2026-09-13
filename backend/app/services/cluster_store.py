@@ -71,8 +71,10 @@ async def fetch_existing_clusters(gateway: SupabaseGateway) -> list[ExistingClus
 async def fetch_active_cluster_arrivals(
     gateway: SupabaseGateway,
 ) -> dict[str, list[datetime]]:
-    """Per active cluster, its members' ``added_at`` arrival times — the input momentum
-    scores. Stale clusters are excluded; momentum only re-ranks the live feed."""
+    """Per active cluster, its members' effective event times — the input momentum scores.
+    Each member's time is its article's ``published_at``, or ``added_at`` when earlier or
+    when the article has no ``published_at``. Stale clusters are excluded; momentum only
+    re-ranks the live feed."""
     active = await gateway.table("clusters").select("id").eq("status", "active").execute()
     arrivals: dict[str, list[datetime]] = {row["id"]: [] for row in active.data}
     cluster_ids = list(arrivals)
@@ -80,15 +82,24 @@ async def fetch_active_cluster_arrivals(
         batch = cluster_ids[start : start + _IN_FILTER_BATCH_SIZE]
         result = await (
             gateway.table("cluster_articles")
-            .select("cluster_id, added_at")
+            .select("cluster_id, added_at, articles(published_at)")
             .in_("cluster_id", batch)
             .execute()
         )
         for row in result.data:
             cluster_id = row["cluster_id"]
             added_at = row.get("added_at")
-            if cluster_id in arrivals and added_at is not None:
-                arrivals[cluster_id].append(_parse_timestamp(added_at))
+            if cluster_id not in arrivals or added_at is None:
+                continue
+            added_at_ts = _parse_timestamp(added_at)
+            article = row.get("articles")
+            published_at = article.get("published_at") if article else None
+            event_time = (
+                min(_parse_timestamp(published_at), added_at_ts)
+                if published_at is not None
+                else added_at_ts
+            )
+            arrivals[cluster_id].append(event_time)
     return arrivals
 
 

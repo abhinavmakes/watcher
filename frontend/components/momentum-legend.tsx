@@ -4,8 +4,8 @@ export function MomentumLegend() {
   return (
     <p className="text-[13px] text-muted-foreground">
       The number on each story is its{" "}
-      <span className="font-medium text-foreground">momentum</span>: roughly how many
-      sources landed on it, on a scale of 0 to 100. More coverage floats higher.
+      <span className="font-medium text-foreground">momentum</span>: how much recent
+      coverage it has, on a scale of 0 to 100, with this week&apos;s articles counting most.
     </p>
   );
 }

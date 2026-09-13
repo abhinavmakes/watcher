@@ -455,7 +455,7 @@ async def test_run_pipeline_scores_momentum_and_marks_stale(
 
     async def fake_fetch_arrivals(gateway: SupabaseGateway) -> dict[str, list[datetime]]:
         now = datetime.now(UTC)
-        return {"fresh": [now], "stale-one": [now - timedelta(hours=72)]}
+        return {"fresh": [now], "stale-one": [now - timedelta(hours=200)]}
 
     captured: list[tuple[str, float, str]] = []
 
@@ -480,7 +480,7 @@ async def test_run_pipeline_scores_momentum_and_marks_stale(
     by_id = {cid: (score, status) for cid, score, status in captured}
     assert by_id["stale-one"][1] == "stale"
     assert by_id["fresh"][1] == "active"
-    # Sum-of-decay: a fresh member outscores one that is 72h old.
+    # Sum-of-decay: a fresh member outscores one that is 200h old.
     assert by_id["fresh"][0] > by_id["stale-one"][0]
     # Both counts land in the run summary for the pipeline_runs audit row.
     assert summary.clusters_scored == 2

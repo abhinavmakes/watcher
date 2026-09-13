@@ -10,7 +10,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "Watcher | A week of AI and tech, grouped so you read each story once",
   description:
-    "Reads nineteen AI and engineering sources once a week and folds coverage of the same thing into a single story, so you read it once instead of five times.",
+    "Reads twenty-three AI and engineering sources once a week and folds coverage of the same thing into a single story, so you read it once instead of five times.",
 };
 
 export default function RootLayout({

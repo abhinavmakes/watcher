@@ -365,6 +365,41 @@ async def test_fetch_active_cluster_arrivals_groups_added_at_by_cluster() -> Non
 
 
 @pytest.mark.asyncio
+async def test_fetch_active_cluster_arrivals_uses_earlier_of_published_and_added() -> None:
+    gateway = RecordingGateway(
+        {
+            ("clusters", "select"): [{"id": "c1"}],
+            ("cluster_articles", "select"): [
+                # published earlier than added -> published_at wins (late-ingested archive post)
+                {
+                    "cluster_id": "c1",
+                    "added_at": "2026-06-25T10:00:00+00:00",
+                    "articles": {"published_at": "2026-06-01T00:00:00+00:00"},
+                },
+                # published later than added -> added_at wins (feed timezone bug)
+                {
+                    "cluster_id": "c1",
+                    "added_at": "2026-06-25T10:00:00+00:00",
+                    "articles": {"published_at": "2026-06-26T00:00:00+00:00"},
+                },
+                # no article relation -> added_at
+                {"cluster_id": "c1", "added_at": "2026-06-25T08:00:00+00:00", "articles": None},
+            ],
+        }
+    )
+
+    arrivals = await fetch_active_cluster_arrivals(cast(SupabaseGateway, gateway))
+
+    assert arrivals == {
+        "c1": [
+            datetime(2026, 6, 1, tzinfo=UTC),
+            datetime(2026, 6, 25, 10, tzinfo=UTC),
+            datetime(2026, 6, 25, 8, tzinfo=UTC),
+        ]
+    }
+
+
+@pytest.mark.asyncio
 async def test_fetch_active_cluster_arrivals_keeps_memberless_clusters() -> None:
     gateway = RecordingGateway(
         {("clusters", "select"): [{"id": "c1"}], ("cluster_articles", "select"): []}

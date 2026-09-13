@@ -19,7 +19,7 @@ export default function Home() {
           A week of AI and tech, grouped so you read each story once.
         </h1>
         <p className="text-pretty leading-relaxed text-muted-foreground">
-          It reads nineteen sources once a week, throws out the filler, and when several
+          It reads twenty-three sources once a week, throws out the filler, and when several
           of them cover the same thing it folds them into a single story instead of
           handing you five copies of it.
         </p>

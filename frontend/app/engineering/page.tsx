@@ -262,6 +262,12 @@ export default function Engineering() {
           Multi-outlet event clustering is not currently demonstrable on this corpus,
           and I removed that claim from the front page the day it stopped being true.
         </p>
+        <p>
+          Later I brought a handful of news feeds back. The blogs were there for
+          retrieval, and without news the front page stopped showing the week&apos;s
+          actual events, which is the one job the feed has. The two now sit side by
+          side: news for grouping coverage, long-form posts for the text.
+        </p>
       </Section>
 
       <Section title="A bug that could only appear in production">
@@ -320,6 +326,24 @@ export default function Engineering() {
         </p>
       </Section>
 
+      <Section title="The ranking bug I found by looking at the feed">
+        <p>
+          The front page was showing a model launch from months earlier above the
+          week&apos;s actual news. The cause was one timestamp. Momentum weighted each
+          article by when the pipeline found it, not when it was published, so the
+          first fetch of a blog with years of archive made every old post look like
+          breaking news. A cluster could also come back to life when one new article
+          joined it.
+        </p>
+        <p>
+          Ranking now uses the publication date, capped so it can never be later than
+          the moment the article arrived, which stops a feed with a timezone bug from
+          making something look fresher than it is. One function changed, and
+          everything downstream picked it up, because the scoring and the staleness
+          check were already pure functions that only take a list of times.
+        </p>
+      </Section>
+
       <Section title="What is not finished">
         <p>
           Clustering has a small labelled test set that checks whether same-story and
@@ -332,13 +356,6 @@ export default function Engineering() {
           back to the source text that produced it, is the next real piece of work. That
           is also the point at which I will be able to say something measurable about
           whether the summaries are grounded, rather than only that they look right.
-        </p>
-        <p>
-          Momentum currently carries less information than it appears to. Every story in
-          the database was created within a small number of runs, so the decay term has
-          not had time to separate anything. It becomes meaningful only after the
-          scheduled job has been running for a while, which is a slightly unsatisfying
-          thing to admit about a number displayed on every card.
         </p>
       </Section>
 

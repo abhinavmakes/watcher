@@ -18,12 +18,12 @@ Staying current in AI means scanning newsletters (a day late, can't query), Twit
 
 | Stage | What it does | Status |
 |---|---|---|
-| **Ingest** | Long-form engineering blogs (AWS ML + Architecture, Meta Engineering, Google Research, BAIR, GitHub, Julia Evans, Simon Willison, Pragmatic Engineer) + Hacker News, normalized to one schema; dedup by canonical URL | ✅ |
+| **Ingest** | Long-form engineering blogs (AWS ML + Architecture, Meta Engineering, Google Research, BAIR, GitHub, Julia Evans, Simon Willison, Pragmatic Engineer), alongside AI news feeds for multi-outlet coverage, + Hacker News, normalized to one schema; dedup by canonical URL | ✅ |
 | **Classify** | Claude Haiku 4.5 assigns domains, a relevance score, a noise flag, and **key entities** — in one structured-output call | ✅ |
 | **Embed** | OpenAI `text-embedding-3-small` (768-dim) over a cleaned title+content representation, stored in pgvector | ✅ |
 | **Cluster** | Online single-pass event clustering with a **two-tier, entity-anchored** join rule (below) | ✅ |
 | **Synthesize** | One gated LLM briefing per cluster (Claude Sonnet 4.6) — *what happened / what it means* | ✅ |
-| **Momentum** | Recency-weighted decay sum over member arrival times; stale clusters fade | ✅ |
+| **Momentum** | Recency-weighted decay sum over member publication times; stale clusters fade | ✅ |
 | **Serve** | FastAPI read API → Next.js dashboard (cards, momentum, domain filters) | ✅ |
 | **Retrieve** | Chunk-level retrieval + hybrid search, measured by recall@k on a hand-labeled set | 🔧 in progress |
 | **Ground** | Every claim carries chunk IDs; numbers and dates verified against the retrieved text | 🔧 in progress |
@@ -44,7 +44,7 @@ This buys recall on a developing story's many angles *without* lowering the cosi
 
 Thresholds are calibrated by a dedicated eval (`scripts/eval_clustering.py`) over hand-labeled pairs, not guessed.
 
-**Known limitation, honestly stated.** That rule was tuned on a news-heavy corpus, where a shared entity meant *same event* — ten outlets covering one story. The feed mix has since moved to long-form engineering blogs to provide the body text chunk-level retrieval needs, and on single-publisher blogs a shared entity means *same publisher*: `aws` and `google research` now act as cluster magnets, producing publisher digests ("AWS publishes six production guides") rather than events. Multi-outlet event clustering is **not** currently demonstrable on this corpus. Re-running the clustering eval against the new distribution — and letting it decide the threshold rather than hand-tuning — is the next task in [`docs/PLAN.md`](docs/PLAN.md). The tradeoff is recorded in [`DECISIONS.md`](DECISIONS.md).
+**Known limitation, honestly stated.** That rule was tuned on a news-heavy corpus, where a shared entity meant *same event* — ten outlets covering one story. The feed mix has since moved to long-form engineering blogs to provide the body text chunk-level retrieval needs, and on single-publisher blogs a shared entity means *same publisher*: `aws` and `google research` now act as cluster magnets, producing publisher digests ("AWS publishes six production guides") rather than events. Multi-outlet event clustering is **not** currently demonstrable on this corpus. Re-running the clustering eval against the new distribution — and letting it decide the threshold rather than hand-tuning — is the next task in [`docs/PLAN.md`](docs/PLAN.md). The tradeoff is recorded in [`DECISIONS.md`](DECISIONS.md). News feeds were brought back alongside the blogs so multi-outlet grouping has same-event coverage to work on again.
 
 ## Architecture
 

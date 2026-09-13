@@ -101,11 +101,11 @@ export function ArchitectureDiagram() {
       caption="Three processes that never talk to each other directly. The worker writes, the API reads, and the browser only ever sees the API."
     >
       <Node x={40} y={20} title="Hacker News" sub="top stories" />
-      <Node x={200} y={20} title="18 RSS feeds" sub="long-form blogs" />
+      <Node x={200} y={20} title="22 RSS feeds" sub="news and blogs" />
       <Arrow d="M 106 64 L 106 96" />
       <Arrow d="M 266 64 L 266 96" />
 
-      <Node x={40} y={100} w={292} h={48} title="Ingestion worker" sub="GitHub Actions, one shot, every 2 days" />
+      <Node x={40} y={100} w={292} h={48} title="Ingestion worker" sub="GitHub Actions, one shot, weekly" />
       <Arrow d="M 186 148 L 186 186" />
 
       <Node x={40} y={190} w={292} h={48} title="Supabase" sub="Postgres with pgvector" />
