@@ -14,5 +14,8 @@ async def get_runs(
     gateway: Annotated[SupabaseGateway, Depends(get_supabase_gateway)],
     limit: Annotated[int, Query(ge=1, le=50)] = 10,
 ) -> RunPage:
-    rows = await fetch_recent_runs(gateway, limit)
+    try:
+        rows = await fetch_recent_runs(gateway, limit)
+    except Exception:
+        return RunPage(runs=[])
     return RunPage(runs=[RunSummaryCard(**row) for row in rows])

@@ -53,3 +53,17 @@ async def test_get_runs_returns_typed_summaries(
     assert body["runs"][0]["id"] == "r1"
     assert body["runs"][0]["cost_usd"] == 1.02
     assert body["runs"][0]["stage_timings"]["classify"] == 736.0
+
+
+async def test_get_runs_degrades_to_empty_page_on_fetch_failure(
+    client: httpx.AsyncClient, monkeypatch: MonkeyPatch
+) -> None:
+    async def failing_fetch_recent_runs(gateway: Any, limit: int) -> list[dict[str, Any]]:
+        raise RuntimeError("Gateway Timeout")
+
+    monkeypatch.setattr(runs_api, "fetch_recent_runs", failing_fetch_recent_runs)
+
+    response = await client.get("/api/runs")
+
+    assert response.status_code == 200
+    assert response.json()["runs"] == []

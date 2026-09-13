@@ -33,16 +33,26 @@ export async function fetchJson<T>(
   params?: Record<string, string | number | undefined>,
 ): Promise<T> {
   // API_BASE_URL is relative ("/api") in production, where the frontend and API share a
-  // domain, and absolute in local dev. In the browser, resolve against the page origin.
-  // On the server there is no page origin, so use the Vercel deployment host, which the
-  // same-domain rewrite also serves; that lets a preview deployment call its own API
-  // instead of production's, in SSR as well as the browser.
-  const origin =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost";
+  // domain, and absolute in local dev. In the browser, resolve against the page origin. On
+  // the server there is no page origin, so use the incoming request's Host header — the
+  // same domain whose rewrite serves /api — rather than guessing a Vercel deployment URL.
+  let origin: string;
+  if (typeof window !== "undefined") {
+    origin = window.location.origin;
+  } else {
+    // Dynamic import: this module is also pulled into client bundles (e.g. the cluster
+    // detail view), and next/headers cannot appear in a static import there.
+    const { headers } = await import("next/headers");
+    const requestHeaders = await headers();
+    const host = requestHeaders.get("host");
+    if (host) {
+      const isLocal = host.startsWith("localhost") || host.startsWith("127.0.0.1");
+      const proto = requestHeaders.get("x-forwarded-proto") ?? (isLocal ? "http" : "https");
+      origin = `${proto}://${host}`;
+    } else {
+      origin = "http://localhost";
+    }
+  }
   const url = new URL(`${API_BASE_URL}${path}`, origin);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
