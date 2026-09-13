@@ -1,5 +1,5 @@
 function normalizeBase(raw: string | undefined): string {
-  const fallback = "http://localhost:8000";
+  const fallback = "http://localhost:8000/api";
   const value = raw && raw.trim() ? raw.trim() : fallback;
   return value.replace(/\/+$/, "");
 }

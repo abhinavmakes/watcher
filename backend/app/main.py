@@ -9,6 +9,11 @@ from app.api.runs import router as runs_router
 from app.core.config import settings
 from app.core.rate_limit import limiter, rate_limit_handler
 
+# Vercel routes /api/* to this service without stripping the prefix, so the routes carry
+# it too. Keeping it in code rather than in a platform path transform means local dev
+# and production serve identical paths.
+API_PREFIX = "/api"
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -35,9 +40,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(health_router)
-    app.include_router(clusters_router)
-    app.include_router(runs_router)
+    for router in (health_router, clusters_router, runs_router):
+        app.include_router(router, prefix=API_PREFIX)
     return app
 
 

@@ -46,7 +46,7 @@ async def test_get_runs_returns_typed_summaries(
 
     monkeypatch.setattr(runs_api, "fetch_recent_runs", fake_fetch_recent_runs)
 
-    response = await client.get("/runs")
+    response = await client.get("/api/runs")
 
     assert response.status_code == 200
     body = response.json()

@@ -73,7 +73,7 @@ async def test_get_clusters_returns_a_normalized_page(
 
     monkeypatch.setattr(clusters_api, "fetch_clusters_page", fake_page)
 
-    response = await client.get("/clusters")
+    response = await client.get("/api/clusters")
 
     assert response.status_code == 200
     body = response.json()
@@ -84,7 +84,7 @@ async def test_get_clusters_returns_a_normalized_page(
 
 
 async def test_get_clusters_rejects_limit_over_cap(client: httpx.AsyncClient) -> None:
-    response = await client.get("/clusters", params={"limit": 101})
+    response = await client.get("/api/clusters", params={"limit": 101})
 
     assert response.status_code == 422  # Query(le=100) is the in-app bound
 
@@ -110,7 +110,7 @@ async def test_get_cluster_detail_returns_members(
 
     monkeypatch.setattr(clusters_api, "fetch_cluster_detail", fake_detail)
 
-    response = await client.get("/clusters/11111111-1111-1111-1111-111111111111")
+    response = await client.get("/api/clusters/11111111-1111-1111-1111-111111111111")
 
     assert response.status_code == 200
     body = response.json()
@@ -130,13 +130,13 @@ async def test_get_cluster_detail_404_when_missing(
 
     monkeypatch.setattr(clusters_api, "fetch_cluster_detail", fake_detail)
 
-    response = await client.get("/clusters/00000000-0000-0000-0000-000000000000")
+    response = await client.get("/api/clusters/00000000-0000-0000-0000-000000000000")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Cluster not found"
 
 
 async def test_get_cluster_detail_rejects_malformed_uuid(client: httpx.AsyncClient) -> None:
-    response = await client.get("/clusters/not-a-uuid")
+    response = await client.get("/api/clusters/not-a-uuid")
 
     assert response.status_code == 422

@@ -32,7 +32,11 @@ export async function fetchJson<T>(
   path: string,
   params?: Record<string, string | number | undefined>,
 ): Promise<T> {
-  const url = new URL(`${API_BASE_URL}${path}`);
+  // API_BASE_URL is relative ("/api") in production, where the frontend and API share a
+  // domain, and absolute in local dev. Resolving against the page origin handles both, and
+  // lets a preview deployment call its own API instead of production's.
+  const origin = typeof window === "undefined" ? "http://localhost" : window.location.origin;
+  const url = new URL(`${API_BASE_URL}${path}`, origin);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) url.searchParams.set(key, String(value));
