@@ -1,9 +1,16 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from app.models.article import EmbeddedArticle
 from app.models.classification import ArticleDomain
 from app.models.cluster import ExistingCluster
-from app.services.clustering import _mean_centroid, cluster_articles, cosine_similarity
+from app.services.clustering import (
+    _mean_centroid,
+    cluster_articles,
+    cosine_similarity,
+    open_clusters,
+)
 
 
 def _embedded(
@@ -141,3 +148,23 @@ def test_cluster_articles_survives_a_zero_vector() -> None:
         "https://example.com/normal",
         "https://example.com/zero",
     ]
+
+
+def test_open_clusters_windows_from_earliest_not_newest_member() -> None:
+    now = datetime(2026, 9, 13, tzinfo=UTC)
+    within_window = ExistingCluster(id="fresh", centroid=[1.0], article_count=1)
+    magnet = ExistingCluster(id="magnet", centroid=[1.0], article_count=1)
+    memberless = ExistingCluster(id="no-times", centroid=[1.0], article_count=1)
+
+    member_times = {
+        "fresh": [now - timedelta(hours=10)],
+        # Earliest member is 10 days old (outside a 7-day window) even though a member
+        # arrived an hour ago — the magnet case the window exists to close.
+        "magnet": [now - timedelta(days=10), now - timedelta(hours=1)],
+    }
+
+    result = open_clusters(
+        [within_window, magnet, memberless], member_times, now, window_hours=168
+    )
+
+    assert result == [within_window]

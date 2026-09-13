@@ -16,6 +16,7 @@ from app.services.cluster_store import (
     fetch_cluster_detail,
     fetch_clusters_page,
     fetch_existing_clusters,
+    fetch_resynthesis_inputs,
     persist_cluster_result,
     update_cluster_momentum,
 )
@@ -408,6 +409,56 @@ async def test_fetch_active_cluster_arrivals_keeps_memberless_clusters() -> None
     arrivals = await fetch_active_cluster_arrivals(cast(SupabaseGateway, gateway))
 
     assert arrivals == {"c1": []}
+
+
+@pytest.mark.asyncio
+async def test_fetch_resynthesis_inputs_keeps_two_newest_members() -> None:
+    gateway = RecordingGateway(
+        {
+            ("clusters", "select"): [
+                {"id": "c1", "key_entities": ["anthropic"], "domains": ["llms"]}
+            ],
+            ("cluster_articles", "select"): [
+                {
+                    "cluster_id": "c1",
+                    "added_at": "2026-09-01T00:00:00+00:00",
+                    "articles": {
+                        "title": "oldest",
+                        "content": "a",
+                        "source": "rss",
+                        "published_at": "2026-09-01T00:00:00+00:00",
+                    },
+                },
+                {
+                    "cluster_id": "c1",
+                    "added_at": "2026-09-10T00:00:00+00:00",
+                    "articles": {
+                        "title": "newest",
+                        "content": "c",
+                        "source": "rss",
+                        "published_at": "2026-09-10T00:00:00+00:00",
+                    },
+                },
+                {
+                    "cluster_id": "c1",
+                    "added_at": "2026-09-05T00:00:00+00:00",
+                    "articles": {
+                        "title": "middle",
+                        "content": "b",
+                        "source": "hn",
+                        "published_at": "2026-09-05T00:00:00+00:00",
+                    },
+                },
+            ],
+        }
+    )
+
+    inputs = await fetch_resynthesis_inputs(cast(SupabaseGateway, gateway), ["c1"], max_articles=2)
+
+    result = inputs["c1"]
+    assert [article.title for article in result.articles] == ["newest", "middle"]
+    assert result.key_entities == ["anthropic"]
+    assert result.domains == [ArticleDomain.LLMS]
 
 
 @pytest.mark.asyncio

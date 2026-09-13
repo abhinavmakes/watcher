@@ -6,7 +6,7 @@ from typing import Any
 from app.core.supabase import SupabaseGateway
 from app.models.article import EmbeddedArticle
 from app.models.cluster import ClusterResult, ExistingCluster
-from app.models.synthesis import SynthesisOutput
+from app.models.synthesis import SynthesisArticle, SynthesisInput, SynthesisOutput
 
 # postgREST sends `in.(...)` filters in the request URL; long canonical URLs overflow the
 # gateway's URL-length limit, so query in batches.
@@ -68,13 +68,22 @@ async def fetch_existing_clusters(gateway: SupabaseGateway) -> list[ExistingClus
     return clusters
 
 
+def _member_time(added_at: str, article: dict[str, Any] | None) -> datetime:
+    """A member's effective event time: its article's ``published_at``, or ``added_at``
+    when earlier or when the article has no ``published_at``. `min` guards against a feed
+    with a timezone bug reporting a publish date after the pipeline actually saw it."""
+    added_at_ts = _parse_timestamp(added_at)
+    published_at = article.get("published_at") if article else None
+    if published_at is None:
+        return added_at_ts
+    return min(_parse_timestamp(published_at), added_at_ts)
+
+
 async def fetch_active_cluster_arrivals(
     gateway: SupabaseGateway,
 ) -> dict[str, list[datetime]]:
     """Per active cluster, its members' effective event times — the input momentum scores.
-    Each member's time is its article's ``published_at``, or ``added_at`` when earlier or
-    when the article has no ``published_at``. Stale clusters are excluded; momentum only
-    re-ranks the live feed."""
+    Stale clusters are excluded; momentum only re-ranks the live feed."""
     active = await gateway.table("clusters").select("id").eq("status", "active").execute()
     arrivals: dict[str, list[datetime]] = {row["id"]: [] for row in active.data}
     cluster_ids = list(arrivals)
@@ -91,16 +100,75 @@ async def fetch_active_cluster_arrivals(
             added_at = row.get("added_at")
             if cluster_id not in arrivals or added_at is None:
                 continue
-            added_at_ts = _parse_timestamp(added_at)
-            article = row.get("articles")
-            published_at = article.get("published_at") if article else None
-            event_time = (
-                min(_parse_timestamp(published_at), added_at_ts)
-                if published_at is not None
-                else added_at_ts
-            )
-            arrivals[cluster_id].append(event_time)
+            arrivals[cluster_id].append(_member_time(added_at, row.get("articles")))
     return arrivals
+
+
+async def fetch_resynthesis_inputs(
+    gateway: SupabaseGateway, cluster_ids: Sequence[str], max_articles: int
+) -> dict[str, SynthesisInput]:
+    """Per cluster, a SynthesisInput built from its newest ``max_articles`` members —
+    newest first, because a headline rewrite has to describe what the story is now, not
+    what it looked like when the oldest member joined."""
+    clusters_by_id: dict[str, dict[str, Any]] = {}
+    members_by_cluster: dict[str, list[tuple[datetime, dict[str, Any]]]] = {
+        cluster_id: [] for cluster_id in cluster_ids
+    }
+    for start in range(0, len(cluster_ids), _IN_FILTER_BATCH_SIZE):
+        batch = cluster_ids[start : start + _IN_FILTER_BATCH_SIZE]
+        clusters_result = await (
+            gateway.table("clusters")
+            .select("id, key_entities, domains")
+            .in_("id", batch)
+            .execute()
+        )
+        clusters_by_id.update({row["id"]: row for row in clusters_result.data})
+
+        members_result = await (
+            gateway.table("cluster_articles")
+            .select("cluster_id, added_at, articles(title, content, source, published_at)")
+            .in_("cluster_id", batch)
+            .execute()
+        )
+        for row in members_result.data:
+            cluster_id = row["cluster_id"]
+            article = row.get("articles")
+            if cluster_id not in members_by_cluster or article is None:
+                continue
+            member_time = _member_time(row["added_at"], article)
+            members_by_cluster[cluster_id].append((member_time, article))
+
+    inputs: dict[str, SynthesisInput] = {}
+    for cluster_id, members in members_by_cluster.items():
+        cluster = clusters_by_id.get(cluster_id)
+        if cluster is None or not members:
+            continue
+        members.sort(key=lambda pair: pair[0], reverse=True)
+        newest = [article for _, article in members[:max_articles]]
+        inputs[cluster_id] = SynthesisInput(
+            articles=[
+                SynthesisArticle(
+                    title=article["title"], content=article.get("content"), source=article["source"]
+                )
+                for article in newest
+            ],
+            key_entities=cluster.get("key_entities") or [],
+            domains=cluster.get("domains") or [],
+        )
+    return inputs
+
+
+async def update_cluster_synthesis(
+    gateway: SupabaseGateway, cluster_id: str, synthesis: SynthesisOutput
+) -> None:
+    await (
+        gateway.table("clusters")
+        .update(
+            {"title": synthesis.title, "summary": synthesis.summary, "so_what": synthesis.so_what}
+        )
+        .eq("id", cluster_id)
+        .execute()
+    )
 
 
 async def update_cluster_momentum(

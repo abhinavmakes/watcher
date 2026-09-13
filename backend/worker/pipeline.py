@@ -21,10 +21,12 @@ from app.services.article_store import fetch_existing_canonical_urls, insert_art
 from app.services.cluster_store import (
     fetch_active_cluster_arrivals,
     fetch_existing_clusters,
+    fetch_resynthesis_inputs,
     persist_cluster_result,
     update_cluster_momentum,
+    update_cluster_synthesis,
 )
-from app.services.clustering import cluster_articles
+from app.services.clustering import cluster_articles, open_clusters
 from app.services.embeddings import embed_texts, format_embedding_input
 from app.services.momentum import is_stale, score_momentum
 from app.services.pipeline_run_store import insert_pipeline_run
@@ -264,6 +266,44 @@ async def _synthesize_new_clusters(
     return syntheses
 
 
+_RESYNTHESIS_MAX_ARTICLES = 8
+
+
+async def resynthesize_clusters(
+    gateway: SupabaseGateway,
+    cluster_ids: Sequence[str],
+    usage: RunUsage | None = None,
+) -> int:
+    """Rewrite the headline/summary/so_what for clusters that gained members, from their
+    newest coverage. Capped at the 8 newest articles per cluster to bound cost — a
+    19-member cluster would otherwise send ~76k characters to Sonnet on every run."""
+    if not cluster_ids:
+        return 0
+
+    inputs = await fetch_resynthesis_inputs(gateway, cluster_ids, _RESYNTHESIS_MAX_ARTICLES)
+    interval = 60 / settings.synthesis_rpm
+    rewritten = 0
+    called = 0
+    for cluster_id in cluster_ids:
+        synthesis_input = inputs.get(cluster_id)
+        if synthesis_input is None:
+            continue
+        if called > 0:
+            await asyncio.sleep(interval)
+        called += 1
+        try:
+            output = await synthesize_cluster(synthesis_input, usage=usage)
+        except Exception as e:
+            logger.warning(
+                "resynthesis_failed",
+                extra={"cluster_id": cluster_id, "error": str(e)},
+            )
+            continue
+        await update_cluster_synthesis(gateway, cluster_id, output)
+        rewritten += 1
+    return rewritten
+
+
 async def _score_momentum(gateway: SupabaseGateway, now: datetime) -> MomentumStats:
     """Recompute momentum + staleness for every active cluster, not just those touched this
     run: a cluster with no new members still decays and can cross the stale line by elapsed
@@ -379,7 +419,18 @@ async def run_pipeline(
 
             with metrics.timed_stage("cluster"):
                 existing_clusters = await fetch_existing_clusters(gateway)
-                cluster_result = cluster_articles(embedded, existing_clusters)
+                member_times = await fetch_active_cluster_arrivals(gateway)
+                joinable = open_clusters(
+                    existing_clusters,
+                    member_times,
+                    datetime.now(UTC),
+                    settings.cluster_window_hours,
+                )
+                logger.info(
+                    "pipeline_closed_clusters",
+                    extra={"closed": len(existing_clusters) - len(joinable)},
+                )
+                cluster_result = cluster_articles(embedded, joinable)
 
             with metrics.timed_stage("synthesize"):
                 new_cluster_syntheses = await _synthesize_new_clusters(
@@ -392,9 +443,15 @@ async def run_pipeline(
                 )
                 progress.clusters_created = len(cluster_result.new_clusters)
                 progress.clusters_updated = len(cluster_result.updated)
+                refreshed = await resynthesize_clusters(
+                    gateway, list(cluster_result.updated), usage=metrics.synthesis_usage
+                )
                 logger.info(
                     "pipeline_synthesized_clusters",
-                    extra={"synthesized": sum(1 for s in new_cluster_syntheses if s is not None)},
+                    extra={
+                        "synthesized": sum(1 for s in new_cluster_syntheses if s is not None),
+                        "resynthesized": refreshed,
+                    },
                 )
 
             with metrics.timed_stage("momentum"):

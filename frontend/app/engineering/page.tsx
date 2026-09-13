@@ -344,6 +344,25 @@ export default function Engineering() {
         </p>
       </Section>
 
+      <Section title="Fixing the ranking exposed the next bug">
+        <p>
+          Once ranking used publication dates, the old stories should have sunk, and one
+          of them did not. The card still read as a model launch from weeks earlier, but
+          nothing recent inside it was about that launch. It had quietly absorbed a quote
+          from one blog, a newsletter roundup and an interview about an unrelated coding
+          tool, because each shared a broad name like a lab with the cluster, and every
+          article it took in pulled its average vector further toward general AI
+          commentary.
+        </p>
+        <p>
+          Two changes fixed it. A story now stops accepting articles a week after its
+          first article was published, because a news event has a lifetime and a cluster
+          should not keep growing forever. And when a story does gain articles, its
+          headline is rewritten from its newest coverage, so the title describes what is
+          actually inside it rather than whatever the first run saw.
+        </p>
+      </Section>
+
       <Section title="What is not finished">
         <p>
           Clustering has a small labelled test set that checks whether same-story and

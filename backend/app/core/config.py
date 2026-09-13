@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     # Lower tier used only when the article and cluster share a key entity (entity-anchored
     # merge): catches same-story coverage that sits below the cosine-only thresholds.
     cluster_entity_similarity_threshold: float = Field(default=0.65, ge=0.0, le=1.0)
+    # A news event has a lifetime. Once a story's first article was published this long ago it
+    # stops accepting new ones, so an old cluster cannot keep absorbing unrelated coverage.
+    cluster_window_hours: int = Field(default=168, ge=1)
     momentum_stale_hours: int = Field(default=168, ge=1)
     momentum_half_life_hours: float = Field(default=72.0, gt=0)
     high_signal_source_domains: str = (

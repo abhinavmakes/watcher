@@ -21,8 +21,8 @@ Staying current in AI means scanning newsletters (a day late, can't query), Twit
 | **Ingest** | Long-form engineering blogs (AWS ML + Architecture, Meta Engineering, Google Research, BAIR, GitHub, Julia Evans, Simon Willison, Pragmatic Engineer), alongside AI news feeds for multi-outlet coverage, + Hacker News, normalized to one schema; dedup by canonical URL | ✅ |
 | **Classify** | Claude Haiku 4.5 assigns domains, a relevance score, a noise flag, and **key entities** — in one structured-output call | ✅ |
 | **Embed** | OpenAI `text-embedding-3-small` (768-dim) over a cleaned title+content representation, stored in pgvector | ✅ |
-| **Cluster** | Online single-pass event clustering with a **two-tier, entity-anchored** join rule (below) | ✅ |
-| **Synthesize** | One gated LLM briefing per cluster (Claude Sonnet 4.6) — *what happened / what it means* | ✅ |
+| **Cluster** | Online single-pass event clustering with a **two-tier, entity-anchored** join rule (below); a story stops accepting articles a week after its first one | ✅ |
+| **Synthesize** | One LLM briefing per cluster, rewritten when the story gains articles (Claude Sonnet 4.6) — *what happened / what it means* | ✅ |
 | **Momentum** | Recency-weighted decay sum over member publication times; stale clusters fade | ✅ |
 | **Serve** | FastAPI read API → Next.js dashboard (cards, momentum, domain filters) | ✅ |
 | **Retrieve** | Chunk-level retrieval + hybrid search, measured by recall@k on a hand-labeled set | 🔧 in progress |

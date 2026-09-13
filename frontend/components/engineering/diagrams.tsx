@@ -165,7 +165,7 @@ export function MergeRuleDiagram() {
       viewBox="0 0 720 280"
       caption="The second branch is the whole idea. It buys recall on one event covered from several angles without lowering the similarity floor for everything else."
     >
-      <Node x={284} y={12} w={152} h={40} title="New article" sub="vs an existing story" />
+      <Node x={284} y={12} w={152} h={40} title="New article" sub="vs a story opened this week" />
       <Arrow d="M 360 52 L 360 78" />
 
       <Node x={274} y={82} w={172} h={40} title="similarity ≥ 0.78 ?" />

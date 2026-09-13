@@ -1,6 +1,7 @@
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from app.core.config import settings
 from app.models.article import EmbeddedArticle
@@ -32,6 +33,26 @@ def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
         # a crash here writes no pipeline_runs row at all.
         return 0.0
     return dot_product / denominator
+
+
+def open_clusters(
+    clusters: list[ExistingCluster],
+    member_times: dict[str, list[datetime]],
+    now: datetime,
+    window_hours: float,
+) -> list[ExistingCluster]:
+    """Clusters still eligible to receive new members: the window is measured from the
+    earliest member, not the newest, because measuring from the newest would let a magnet
+    cluster refresh its own window on every join and never close."""
+    window = timedelta(hours=window_hours)
+    open_ids: list[ExistingCluster] = []
+    for cluster in clusters:
+        times = member_times.get(cluster.id)
+        if not times:
+            continue
+        if now - min(times) <= window:
+            open_ids.append(cluster)
+    return open_ids
 
 
 def _shares_entity(left: list[str], right: Iterable[str]) -> bool:

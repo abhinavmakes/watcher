@@ -53,16 +53,16 @@ const STAGES: Stage[] = [
     tech: "hand-rolled cosine, entity anchored",
     Icon: Network,
     body: [
-      "A greedy single pass. Each new article is compared against the running average vector of every active story, and joins the closest one if the rule below passes. Stories that never gain a second member are discarded rather than stored, which is why the feed shows stories rather than articles.",
+      "A greedy single pass. Each new article is compared against the running average vector of every story that is still open, meaning its first article was published within the last week, and joins the closest one if the rule below passes. Stories that never gain a second member are discarded rather than stored, which is why the feed shows stories rather than articles.",
       "I wrote the similarity by hand instead of importing a clustering library. That was deliberate and I would defend it: the merge rule is the single most opinionated thing in this project, and a library would have imposed its own algorithm while hiding the decision I most wanted to keep readable. The performance argument does not apply either. The entire clustering stage takes under two seconds.",
     ],
   },
   {
     label: "Synthesize",
-    tech: "Claude Sonnet, new stories only",
+    tech: "Claude Sonnet, new and growing stories",
     Icon: Sparkles,
     body: [
-      "Each newly formed story goes to Claude Sonnet, which writes the summary and the single line about why it matters. This is the only place the expensive model appears, and it is justified by being the only text a human actually reads. Everything else in the pipeline produces labels and numbers for other code to consume.",
+      "Each new story goes to Claude Sonnet, which writes the summary and the single line about why it matters. When an existing story gains articles, it goes back to Sonnet with its newest coverage, so the headline keeps matching what is inside instead of freezing at whatever the first run saw. This is the only place the expensive model appears, and it is justified by being the only text a human actually reads.",
       "The model receives a purpose-built object containing headlines, article text and source names. It does not receive my internal cluster, which carries vectors, centroids and threshold state. That separation is not tidiness. Prompt content is a contract, and handing a model a pile of embedding machinery is several hundred tokens of noise that measurably degrades the writing.",
     ],
   },
