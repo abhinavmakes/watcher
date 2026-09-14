@@ -16,7 +16,7 @@ import { LastRunStrip } from "@/components/feed/last-run-strip";
 import { useClusters } from "@/hooks/use-clusters";
 import { useLatestRun } from "@/hooks/use-latest-run";
 import { RateLimitError } from "@/lib/api";
-import type { ClusterPage } from "@/lib/types";
+import type { ClusterPage, RunPage } from "@/lib/types";
 
 function FeedStatus({
   total,
@@ -38,9 +38,15 @@ function FeedStatus({
   );
 }
 
-export function FeedView({ initialData }: { initialData?: ClusterPage }) {
+export function FeedView({
+  initialData,
+  initialRun,
+}: {
+  initialData?: ClusterPage;
+  initialRun?: RunPage;
+}) {
   const { page, error, isLoading, refresh } = useClusters(initialData);
-  const { run } = useLatestRun();
+  const { run } = useLatestRun(initialRun);
   const [activeDomain, setActiveDomain] = useState<string | null>(null);
 
   useEffect(() => {

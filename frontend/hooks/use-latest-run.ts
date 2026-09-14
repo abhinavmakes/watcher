@@ -5,9 +5,10 @@ import useSWR from "swr";
 import { getLatestRun } from "@/lib/runs";
 import type { RunPage } from "@/lib/types";
 
-export function useLatestRun() {
+export function useLatestRun(initialData?: RunPage) {
   const { data, error, isLoading } = useSWR<RunPage>("latest-run", getLatestRun, {
     revalidateOnFocus: false,
+    fallbackData: initialData,
   });
 
   return {
