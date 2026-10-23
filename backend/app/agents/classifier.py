@@ -2,20 +2,15 @@ import json
 from typing import Any
 
 from pydantic_ai import Agent
-from pydantic_ai.models.anthropic import AnthropicModel
-from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.usage import RunUsage
 
+from app.agents.llm import build_model
 from app.core.config import settings
 from app.models.article import ArticleInput
 from app.models.classification import ArticleDomain, ClassificationOutput
 
 _MAX_CONTENT_CHARS = 4000
 _classifier_agent: Agent[None, ClassificationOutput] | None = None
-
-
-class ClassifierConfigError(RuntimeError):
-    pass
 
 
 CLASSIFIER_DOMAIN_GUIDE: dict[ArticleDomain, str] = {
@@ -297,27 +292,11 @@ reason: "Job posting with no technical content about the system, stack, or resea
 """
 
 
-def _model_name_from_setting(model_name: str) -> str:
-    return model_name.removeprefix("anthropic:")
-
-
-def build_classifier_model() -> AnthropicModel:
-    api_key = settings.claude_api_key_value
-    if api_key is None:
-        raise ClassifierConfigError("CLAUDE_API_KEY is required for the classifier agent")
-
-    provider = AnthropicProvider(api_key=api_key)
-    return AnthropicModel(
-        _model_name_from_setting(settings.classifier_model),
-        provider=provider,
-    )
-
-
 def get_classifier_agent() -> Agent[None, ClassificationOutput]:
     global _classifier_agent
     if _classifier_agent is None:
         _classifier_agent = Agent(
-            model=build_classifier_model(),
+            model=build_model(settings.classifier_model),
             output_type=ClassificationOutput,
             system_prompt=CLASSIFIER_SYSTEM_PROMPT,
             name="watcher_classifier",

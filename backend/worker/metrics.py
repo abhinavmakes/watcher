@@ -37,6 +37,10 @@ _HAIKU_PRICE = _ModelPrice(
 _SONNET_PRICE = _ModelPrice(
     input_per_mtok=3.00, cache_write_per_mtok=3.75, cache_read_per_mtok=0.30, output_per_mtok=15.00
 )
+# OpenAI caches automatically and doesn't bill writes, so cache_write is just the input rate.
+_LUNA_PRICE = _ModelPrice(
+    input_per_mtok=0.10, cache_write_per_mtok=0.10, cache_read_per_mtok=0.01, output_per_mtok=0.50
+)
 _EMBEDDING_PRICE_PER_MTOK = 0.02  # text-embedding-3-small
 
 
@@ -45,7 +49,9 @@ class UnpricedModelError(RuntimeError):
 
 
 def _model_price(model_name: str) -> _ModelPrice:
-    name = model_name.removeprefix("anthropic:").lower()
+    name = model_name.partition(":")[2].lower() or model_name.lower()
+    if "gpt-6-luna" in name:
+        return _LUNA_PRICE
     if "haiku" in name:
         return _HAIKU_PRICE
     if "sonnet" in name:
@@ -54,8 +60,11 @@ def _model_price(model_name: str) -> _ModelPrice:
 
 
 def _usage_cost(usage: RunUsage, price: _ModelPrice) -> float:
+    # PydanticAI's input_tokens already includes cache reads/writes; bill only the remainder
+    # at the full input rate.
+    uncached_input = usage.input_tokens - usage.cache_read_tokens - usage.cache_write_tokens
     return (
-        usage.input_tokens * price.input_per_mtok
+        uncached_input * price.input_per_mtok
         + usage.cache_write_tokens * price.cache_write_per_mtok
         + usage.cache_read_tokens * price.cache_read_per_mtok
         + usage.output_tokens * price.output_per_mtok

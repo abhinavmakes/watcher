@@ -22,11 +22,8 @@ export default async function Home() {
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-6 sm:px-6 sm:py-8">
       <SiteHeader />
 
-      {/* Content first. The explainer used to sit above the feed — a hero, a paragraph,
-          a legend, an animation and a logo marquee — so the first thing a visitor met
-          was the site describing itself rather than the stories it found. */}
-      {/* Three weights, not one grey block: the claim, then why it exists, then how it
-          works. The legend stays last because it describes the cards, not the project. */}
+      {/* Content first. The explainer is text only — the fold demo needs the full width
+          of the page to spread its chip grid out, which a hero column can't give it. */}
       <section className="flex max-w-2xl flex-col gap-3">
         <h1 className="text-balance text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
           An AI news feed that does the reading for you.
@@ -46,13 +43,9 @@ export default async function Home() {
         <MomentumLegend />
       </section>
 
-      <FeedView initialData={initialClusters} initialRun={initialRun} />
-
-      <section className="flex flex-col gap-5 border-t border-border pt-10">
+      <section className="flex flex-col gap-4 border-t border-border pt-8">
         <div className="flex max-w-2xl flex-col gap-2">
-          <h2 className="text-lg font-semibold tracking-tight">
-            Many outlets, one story
-          </h2>
+          <h2 className="text-lg font-semibold tracking-tight">Many outlets, one story</h2>
           <p className="text-pretty leading-relaxed text-muted-foreground">
             The same news breaks everywhere at once. Watcher reads all of it, works out
             which articles are about the same event, and writes one card.{" "}
@@ -67,6 +60,8 @@ export default async function Home() {
         </div>
         <StoryFold />
       </section>
+
+      <FeedView initialData={initialClusters} initialRun={initialRun} />
 
       <SiteFooter />
     </main>

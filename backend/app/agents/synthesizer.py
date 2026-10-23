@@ -2,19 +2,14 @@ import json
 from typing import Any
 
 from pydantic_ai import Agent
-from pydantic_ai.models.anthropic import AnthropicModel
-from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.usage import RunUsage
 
+from app.agents.llm import build_model
 from app.core.config import settings
 from app.models.synthesis import SynthesisInput, SynthesisOutput
 
 _MAX_CONTENT_CHARS = 4000
 _synthesizer_agent: Agent[None, SynthesisOutput] | None = None
-
-
-class SynthesizerConfigError(RuntimeError):
-    pass
 
 
 SYNTHESIS_SYSTEM_PROMPT = """\
@@ -158,27 +153,11 @@ a product story.
 """
 
 
-def _model_name_from_setting(model_name: str) -> str:
-    return model_name.removeprefix("anthropic:")
-
-
-def build_synthesizer_model() -> AnthropicModel:
-    api_key = settings.claude_api_key_value
-    if api_key is None:
-        raise SynthesizerConfigError("CLAUDE_API_KEY is required for the synthesizer agent")
-
-    provider = AnthropicProvider(api_key=api_key)
-    return AnthropicModel(
-        _model_name_from_setting(settings.synthesis_model),
-        provider=provider,
-    )
-
-
 def get_synthesizer_agent() -> Agent[None, SynthesisOutput]:
     global _synthesizer_agent
     if _synthesizer_agent is None:
         _synthesizer_agent = Agent(
-            model=build_synthesizer_model(),
+            model=build_model(settings.synthesis_model),
             output_type=SynthesisOutput,
             system_prompt=SYNTHESIS_SYSTEM_PROMPT,
             name="watcher_synthesizer",

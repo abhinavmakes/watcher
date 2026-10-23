@@ -26,11 +26,12 @@ function CardCell({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.96 }}
+      initial={{ opacity: 0, y: 16, scale: 0.97 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1, transition: cardTransition(index) }}
+      viewport={{ once: true, margin: "-80px" }}
+      exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.2 } }}
       whileHover={{ y: -4 }}
-      transition={cardTransition(index)}
+      transition={{ duration: 0.2 }}
     >
       <ClusterCard card={card} variant={variant} />
     </motion.div>

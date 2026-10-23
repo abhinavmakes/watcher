@@ -5,7 +5,8 @@ calling no model); pass ``--write`` to actually rewrite. Rewrites *all* active c
 not just the open ones: the magnets this fix closes will never gain members again, and
 without this pass they would carry wrong headlines until they go stale on their own.
 
-Run: ``uv run python -m scripts.resynthesize_clusters [--write]`` (needs SUPABASE + CLAUDE_API_KEY).
+Run: ``uv run python -m scripts.resynthesize_clusters [--write]``
+(needs SUPABASE + the synthesis model's API key).
 """
 
 import argparse

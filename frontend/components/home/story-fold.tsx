@@ -149,42 +149,59 @@ function buildChips(width: number, story: SourceLine[], others: SourceLine[]): C
   return chips;
 }
 
+// One easing curve for every phase. Mixing easeOut/easeInOut/a material curve per phase is
+// what made the sequence read as stitched clips instead of one continuous motion.
+const EASE = [0.25, 0.46, 0.45, 0.94] as const;
+
 const chipVariants: Variants = {
   arrive: ({ order }: Chip) => ({
     opacity: 1,
     x: 0,
     y: 0,
     scale: 1,
-    transition: { duration: 0.4, delay: order * 0.045, ease: "easeOut" },
+    filter: "blur(0px)",
+    transition: { duration: 0.4, delay: order * 0.045, ease: EASE },
   }),
   narrow: ({ isStory, order }: Chip) => ({
     opacity: isStory ? 1 : 0,
-    x: 0,
-    y: 0,
-    scale: isStory ? 1.03 : 0.95,
-    // The rest dissolve in the order they arrived rather than all at once, so the three that
-    // stay look picked out rather than left over.
-    transition: { duration: 0.5, delay: isStory ? 0.1 : order * 0.025, ease: "easeInOut" },
+    x: isStory ? 0 : order % 2 === 0 ? -6 : 6,
+    y: isStory ? 0 : 6,
+    scale: isStory ? 1.03 : 0.9,
+    filter: "blur(0px)",
+    // The rest drift and dissolve in the order they arrived rather than all at once, so the
+    // three that stay look picked out rather than left over.
+    transition: { duration: 0.5, delay: isStory ? 0.1 : order * 0.025, ease: EASE },
   }),
   fold: ({ isStory, dx, dy }: Chip) => ({
     opacity: 0,
     x: isStory ? dx : 0,
     y: isStory ? dy : 0,
     scale: isStory ? 0.92 : 0.95,
+    // Story chips blur as they converge, so the sharpening card reads as the same motion
+    // coming into focus rather than an unrelated element appearing after they vanish.
+    filter: isStory ? "blur(6px)" : "blur(0px)",
     transition: {
       duration: 0.6,
-      ease: [0.3, 0, 0.2, 1],
-      opacity: { duration: 0.25, delay: 0.35 },
+      ease: EASE,
+      opacity: { duration: 0.3, delay: 0.3 },
     },
   }),
   settled: { opacity: 0, transition: { duration: 0.2 } },
 };
 
+// The card starts fading in partway through "fold" — while the story chips are still
+// converging and blurring out — instead of waiting for the "settled" phase to begin. That
+// overlap is what turns "chips vanish, then a card appears" into a single cross-fade.
 const cardVariants: Variants = {
-  arrive: { opacity: 0, scale: 0.96, transition: { duration: 0.3 } },
-  narrow: { opacity: 0, scale: 0.96, transition: { duration: 0.3 } },
-  fold: { opacity: 0, scale: 0.97, transition: { duration: 0.3 } },
-  settled: { opacity: 1, scale: 1, transition: { duration: 0.55, ease: "easeOut" } },
+  arrive: { opacity: 0, scale: 0.96, filter: "blur(8px)", transition: { duration: 0.3, ease: EASE } },
+  narrow: { opacity: 0, scale: 0.96, filter: "blur(8px)", transition: { duration: 0.3, ease: EASE } },
+  fold: {
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: { duration: 0.5, delay: 0.35, ease: EASE },
+  },
+  settled: { opacity: 1, scale: 1, filter: "blur(0px)", transition: { duration: 0.3, ease: EASE } },
 };
 
 function ChipBody({ line }: { line: SourceLine }) {
@@ -292,7 +309,7 @@ function FoldStage({ detail, story, others, fetched }: StageProps) {
             key={name}
             initial={false}
             animate={{ opacity: phase === name ? 1 : 0, y: phase === name ? 0 : 3 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
+            transition={{ duration: 0.35, ease: EASE }}
             className="absolute inset-x-0 top-0 text-[13px] leading-5 text-muted-foreground tabular-nums"
           >
             {labels[name]}

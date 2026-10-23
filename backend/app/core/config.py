@@ -44,9 +44,9 @@ class Settings(BaseSettings):
     supabase_publishable_key: str | None = Field(default=None, repr=False)
 
     claude_api_key: SecretStr | None = Field(default=None, repr=False)
-    classifier_model: str = "anthropic:claude-haiku-4-5-20251001"
+    classifier_model: str = "openai:gpt-6-luna"
     classifier_rpm: int = Field(default=15, ge=1)
-    synthesis_model: str = "anthropic:claude-sonnet-4-6"
+    synthesis_model: str = "openai:gpt-6-luna"
     synthesis_rpm: int = Field(default=15, ge=1)
     openai_api_key: SecretStr | None = Field(default=None, repr=False)
     embedding_model: str = "text-embedding-3-small"
