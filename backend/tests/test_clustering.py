@@ -163,8 +163,6 @@ def test_open_clusters_windows_from_earliest_not_newest_member() -> None:
         "magnet": [now - timedelta(days=10), now - timedelta(hours=1)],
     }
 
-    result = open_clusters(
-        [within_window, magnet, memberless], member_times, now, window_hours=168
-    )
+    result = open_clusters([within_window, magnet, memberless], member_times, now, window_hours=168)
 
     assert result == [within_window]

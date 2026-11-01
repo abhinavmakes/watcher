@@ -53,8 +53,8 @@ export default function HowItWorks() {
         <ul className="flex list-disc flex-col gap-2 pl-5">
           <li>
             <span className="font-medium text-foreground">Worker.</span> A one-shot
-            Python job on GitHub Actions. It runs weekly, processes new articles and
-            exits.
+            Python job on GitHub Actions. It runs weekly (currently I run it manually,
+            as and when needed, to save costs), processes new articles and exits.
           </li>
           <li>
             <span className="font-medium text-foreground">Database.</span> Supabase
@@ -74,6 +74,10 @@ export default function HowItWorks() {
       <Section title="Pipeline">
         <PipelineDiagram />
         <PipelineStages />
+        <p className="text-[13px] text-muted-foreground/80">
+          Counts and timings are from a single run on 12 September 2026. The figures for
+          every run are recorded, and the latest are shown on the feed.
+        </p>
       </Section>
 
       <Section title="The clustering rule">
@@ -199,8 +203,8 @@ export default function HowItWorks() {
             hand-labelled articles, balanced across topics. The eval fails below its
             bar: noise precision of at least 0.90 and recall of at least 0.75. Precision
             is held higher because dropping a good story is the worse mistake. The
-            labels are written by hand because the classifier is Claude, and grading
-            Claude with Claude measures agreement rather than correctness.
+            labels are written by hand because the classifier is an LLM, and grading
+            an LLM with an LLM measures agreement rather than correctness.
           </li>
           <li>
             <span className="font-medium text-foreground">Clustering.</span> 13

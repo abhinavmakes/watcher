@@ -2,12 +2,15 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
 
+// Cross-origin API to allow in connect-src. A relative base ("/api", as in production where
+// the API shares the site's domain) is already covered by 'self', so it adds nothing.
 function apiOrigin(): string {
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (base?.startsWith("/")) return "";
   try {
-    return new URL(process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000")
-      .origin;
+    return new URL(base ?? "http://localhost:8000").origin;
   } catch {
-    return "http://localhost:8000";
+    return "";
   }
 }
 
@@ -24,7 +27,7 @@ const csp = [
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  `connect-src 'self' ${apiOrigin()}${isDev ? " ws:" : ""}`,
+  `connect-src ${["'self'", apiOrigin(), ...(isDev ? ["ws:"] : [])].filter(Boolean).join(" ")}`,
 ].join("; ");
 
 const securityHeaders = [

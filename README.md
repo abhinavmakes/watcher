@@ -1,112 +1,149 @@
 # Watcher
 
-**Real-time AI/tech intelligence — it reads the firehose so you see ~8 clusters, not 100 articles.**
+[![CI](https://github.com/abhinavmakes/watcher/actions/workflows/ci.yml/badge.svg)](https://github.com/abhinavmakes/watcher/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Watcher ingests AI/engineering news from many sources, then runs each article through a typed agent pipeline — **classify → embed → entity-anchored event clustering → synthesize → momentum rank** — and serves the result as a live dashboard of "what matters today," grouped by story rather than by feed.
+**An AI news feed that does the reading for you.** Watcher pulls in AI and software-engineering
+articles, drops the noise, groups coverage of the same event into one story, and writes a short
+briefing for each, so you read one card instead of the same launch five times.
 
-> **Status (Aug 2026):** the full pipeline — ingest → classify → embed → cluster → synthesize → momentum — plus the read API and the dashboard are **built and running on a cron**. Current work is chunk-level retrieval and a grounding check, so that every claim in a briefing cites the source text it came from and every number is verified against it. Plan: [`docs/PLAN.md`](docs/PLAN.md).
->
-> _Live demo: coming at deploy._
-
----
-
-## The problem
-
-Staying current in AI means scanning newsletters (a day late, can't query), Twitter/X (real-time but pure noise), and Hacker News (great but single-source). The same story breaks across a dozen outlets and you read it five times. Watcher's opinion: you don't need 100 articles, you need the **8 stories that moved today** and which 2 you should care about.
+**Live: [watcher-news.vercel.app](https://watcher-news.vercel.app)** ·
+[How it works](https://watcher-news.vercel.app/how-it-works)
 
 ## How it works
 
-| Stage | What it does | Status |
-|---|---|---|
-| **Ingest** | Long-form engineering blogs (AWS ML + Architecture, Meta Engineering, Google Research, BAIR, GitHub, Julia Evans, Simon Willison, Pragmatic Engineer), alongside AI news feeds for multi-outlet coverage, + Hacker News, normalized to one schema; dedup by canonical URL | ✅ |
-| **Classify** | Claude Haiku 4.5 assigns domains, a relevance score, a noise flag, and **key entities** — in one structured-output call | ✅ |
-| **Embed** | OpenAI `text-embedding-3-small` (768-dim) over a cleaned title+content representation, stored in pgvector | ✅ |
-| **Cluster** | Online single-pass event clustering with a **two-tier, entity-anchored** join rule (below); a story stops accepting articles a week after its first one | ✅ |
-| **Synthesize** | One LLM briefing per cluster, rewritten when the story gains articles (Claude Sonnet 4.6) — *what happened / what it means* | ✅ |
-| **Momentum** | Recency-weighted decay sum over member publication times; stale clusters fade | ✅ |
-| **Serve** | FastAPI read API → Next.js dashboard (cards, momentum, domain filters) | ✅ |
-| **Retrieve** | Chunk-level retrieval + hybrid search, measured by recall@k on a hand-labeled set | 🔧 in progress |
-| **Ground** | Every claim carries chunk IDs; numbers and dates verified against the retrieved text | 🔧 in progress |
+```
+Hacker News + RSS → dedup → classify → embed → cluster → synthesize → momentum → API → site
+```
 
-## The interesting part: entity-anchored event clustering
+| Stage | What it does |
+|---|---|
+| **Ingest** | Hacker News and a configurable list of RSS feeds (engineering blogs and AI news) are fetched concurrently into one schema and deduplicated by canonical URL. Old articles are dropped. |
+| **Classify** | One structured-output call per new article returns domains, a 0-1 relevance score, a noise flag and key entities. Articles already stored never reach the model. |
+| **Embed** | `text-embedding-3-small` truncated to 768 dimensions, stored in Postgres with pgvector. |
+| **Cluster** | Online single-pass event clustering with a two-tier, entity-anchored join rule (below). A story stops accepting articles a week after its first one. |
+| **Synthesize** | One briefing per story: a headline, what happened, and why it matters. Rewritten when the story grows. |
+| **Momentum** | A recency-weighted decay sum over member publication times. Stale stories fade out of the feed. |
+| **Serve** | A read-only FastAPI service and a Next.js site, both on Vercel. |
 
-Same-event news clustering with a single cosine threshold is brittle — set it high and one story fragments into five cards; set it low and unrelated stories merge into mush. Watcher uses the approach the news-clustering literature converged on ([entity-aware streaming clustering](https://arxiv.org/abs/2101.11059)): **combine the dense embedding signal with a sparse entity signal.**
+The ingestion job runs weekly (currently I trigger it manually, as and when I need it, to save
+costs). Each run records its token use, cost and per-stage timings; the site shows the latest.
 
-Two articles join the same cluster when:
+## The interesting part: entity-anchored clustering
+
+A single cosine threshold for "same story" is brittle. Set it high and one event fragments into
+five cards; set it low and unrelated stories merge. Watcher combines the dense embedding signal
+with a sparse entity signal ([entity-aware streaming clustering](https://arxiv.org/abs/2101.11059)).
+Two articles join the same story when:
 
 ```
-cosine ≥ high_threshold          (near-duplicate coverage — auto-merge)
+cosine ≥ 0.78                                   near-duplicate coverage
    OR
-cosine ≥ entity_threshold  AND  they share a key entity   (same-story, different angle)
+cosine ≥ 0.65  AND  they share a key entity     same event, different angle
 ```
 
-This buys recall on a developing story's many angles *without* lowering the cosine floor for unrelated articles — something a single threshold cannot do. The entities come free from the classifier call already in the pipeline.
+That buys recall on a developing story's many angles without lowering the floor for unrelated
+articles, which a single threshold cannot do. The entities come free from the classifier call
+already in the pipeline. The cosine and the rule are hand-written
+([`clustering.py`](backend/app/services/clustering.py)); no clustering library.
 
-Thresholds are calibrated by a dedicated eval (`scripts/eval_clustering.py`) over hand-labeled pairs, not guessed.
-
-**Known limitation, honestly stated.** That rule was tuned on a news-heavy corpus, where a shared entity meant *same event* — ten outlets covering one story. The feed mix has since moved to long-form engineering blogs to provide the body text chunk-level retrieval needs, and on single-publisher blogs a shared entity means *same publisher*: `aws` and `google research` now act as cluster magnets, producing publisher digests ("AWS publishes six production guides") rather than events. Multi-outlet event clustering is **not** currently demonstrable on this corpus. Re-running the clustering eval against the new distribution — and letting it decide the threshold rather than hand-tuning — is the next task in [`docs/PLAN.md`](docs/PLAN.md). The tradeoff is recorded in [`DECISIONS.md`](DECISIONS.md). News feeds were brought back alongside the blogs so multi-outlet grouping has same-event coverage to work on again.
+**Where it falls short.** The rule was tuned on news-heavy data, where a shared entity meant the
+same event. On single-publisher engineering blogs a shared entity can just mean the same
+publisher, and `aws` or `google research` then act as cluster magnets that produce publisher
+digests instead of events. The feed list now mixes both kinds. In a snapshot of the live feed
+(2026-11-01), 13 of 20 stories link to at least two distinct hosts, the largest being 13 articles
+from 5 hosts, and the other 7 sit inside a single host. The clustering eval is a small set of
+hand-labelled pairs (13), so treat the thresholds as tuned, not proven. Re-running the eval on
+the current feed mix is the next piece of work. The trade-off is recorded in
+[`DECISIONS.md`](DECISIONS.md).
 
 ## Architecture
 
 ```
- Sources: AWS · Meta Eng · Google Research · BAIR · GitHub · jvns · Simon Willison · HN
-                         │
-        ┌────────────────▼────────────────────────────────┐
-        │  Ingestion worker  (Python, scheduled)           │
-        │  connectors → classify → embed → cluster →        │
-        │               synthesize → momentum               │
-        │  typed agents via PydanticAI, structured outputs   │
-        └────────────────┬────────────────────────────────┘
-                         │
-        ┌────────────────▼────────────────┐
-        │  Supabase  (Postgres + pgvector) │
-        └────────────────┬────────────────┘
-                         │
-        ┌────────────────▼────────────────┐
-        │  FastAPI  →  Next.js dashboard   │
-        └─────────────────────────────────┘
+ Hacker News + RSS feeds
+          │
+ ┌────────▼────────────────────────────┐
+ │ Ingestion worker (Python, one-shot,  │
+ │ GitHub Actions)                      │
+ └────────┬────────────────────────────┘
+          │
+ ┌────────▼───────────────────┐
+ │ Supabase                   │
+ │ Postgres + pgvector, RLS   │
+ └────────┬───────────────────┘
+          │
+ ┌────────▼───────────────────┐        ┌────────────────────────┐
+ │ FastAPI read API (Vercel)  │◄───────│ Next.js site (Vercel)  │
+ └────────────────────────────┘        └────────────────────────┘
 ```
 
-## Tech stack
+Three processes that never call each other: the worker writes, the API reads, the browser only
+talks to the API. Details, schema and the security model are in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-**Backend:** Python · FastAPI · PydanticAI · uv
-**Data:** Supabase (Postgres + pgvector)
-**Models:** Claude Haiku 4.5 (classification) · OpenAI `text-embedding-3-small` (embeddings) · Claude Sonnet 4.6 (synthesis)
-**Frontend:** Next.js (App Router) · Tailwind _(in progress)_
-**Hosting:** GitHub Actions cron (ingestion worker) · EC2 (read API) · Vercel (frontend)
+**Stack:** Python 3.12 · FastAPI · PydanticAI · uv · Supabase (Postgres + pgvector) · OpenAI
+(`gpt-6-luna` for classification and synthesis, `text-embedding-3-small` for embeddings;
+`build_model()` also routes `anthropic:` models) · Next.js 16 · React 19 · Tailwind 4 · Vercel ·
+GitHub Actions
 
-## Engineering decisions worth defending
+## Engineering decisions
 
-- **No clustering library.** A greedy single-pass over centroids is a few lines and keeps the decision rule explicit and tunable; `scikit-learn`/`scipy` would impose their own algorithm and hide it.
-- **Eval before UI.** Each agent ships with an eval, not just tests — the classifier (precision/recall on a blind-labeled fixture) and clustering (cosine separation on labeled pairs). Tests prove it runs; evals prove it's *correct*.
-- **Entities over threshold-tuning.** Rejected whitening / rerankers / LLM-judge clustering as over-engineering for data that already separated cleanly *on the news corpus* (different-story cosine ≤0.32, same-story ≥0.61); the entity signal was the higher-leverage, simpler fix. Those numbers are distribution-specific — see the limitation above.
-- **PydanticAI, not LangChain.** The pipeline is a linear typed DAG, not a cyclic agent graph — typed inputs/outputs in plain Python beat a graph DSL here.
+The full log, with the alternatives I rejected, is in [`DECISIONS.md`](DECISIONS.md). A few:
 
-## Status
+- **Evals, not just tests.** The classifier is scored against 50 hand-labelled articles with
+  asymmetric targets (noise precision ≥ 0.90, recall ≥ 0.75), because dropping a good article is
+  the failure the product can't afford. Labels are human, since grading an LLM with an LLM
+  measures agreement, not correctness.
+- **Cost control per stage.** Known articles never reach the LLM, noise never reaches the
+  embedder, and every run records its cost. A full run on `gpt-6-luna` costs about $0.08.
+- **PydanticAI, not LangChain.** The pipeline is a linear typed DAG, not a cyclic agent graph.
+- **A public API with no auth, by design.** Read-only, per-IP rate limiting that ignores spoofable
+  headers, GET-only CORS, no LLM call on any request path, and row-level security on every table.
+- **Provider is configuration.** `build_model()` routes a `provider:model` setting, so moving
+  from Claude to OpenAI was re-checked against the eval and cut cost about 18x.
 
-| Done | In progress | Planned |
-|---|---|---|
-| Multi-source ingestion + dedup | Chunk-level retrieval (`article_chunks`, HNSW) | Hybrid search (Postgres FTS + vector, RRF) |
-| Classification (domains, relevance, noise, entities) | Labeled retrieval eval (recall@k, MRR) | Grounding check (numbers + dates, no LLM judge) |
-| Embeddings + pgvector | `signal_type='single_source'` for long-form singletons | Retrieve → draft → check → retry loop |
-| Entity-anchored clustering (see limitation above) | Clustering eval re-run on the new distribution | MCP server exposing the briefing |
-| Momentum scoring + staleness | | Retention/prune job |
-| Synthesis (gated LLM briefings) | | |
-| Read API + Next.js dashboard | | |
-| Classifier + clustering evals | | |
+## Roadmap
 
-Explicitly **not** planned: auth, multi-user, personalization, a source-management UI, real-time
-streaming, mobile. Reasons in [`docs/PLAN.md`](docs/PLAN.md#non-goals).
+Not built yet:
 
-## Run locally (backend)
+- Chunk-level retrieval with hybrid search (Postgres full-text + vector), measured by recall@k on
+  a hand-labelled set.
+- A grounding check, so each claim in a briefing cites the source text it came from and numbers
+  and dates are verified against it.
+- A scheduled run, which is one uncommented line in
+  [`ingest.yml`](.github/workflows/ingest.yml).
+
+Out of scope on purpose: auth, multi-user, personalization, a source-management UI, real-time
+streaming.
+
+## Run it locally
+
+You need [uv](https://docs.astral.sh/uv/), Node 20+, a Supabase project, and an OpenAI API key.
 
 ```bash
+# 1. Database: run supabase/migrations/*.sql in filename order (SQL editor or Supabase CLI)
+
+# 2. Backend
+cp .env.example .env             # fill in SUPABASE_URL, SUPABASE_SECRET_KEY, OPENAI_API_KEY
 cd backend
-# put Supabase + Claude + OpenAI keys in a .env at the repo root
 uv sync
-uv run pytest                    # tests
-uv run python -m worker.run      # one ingestion pass
-uv run python -m scripts.eval_clustering   # clustering threshold eval
+uv run pytest                    # 133 tests, no network or keys needed
+uv run python -m worker.run      # one ingestion pass (calls the LLM, costs a few cents)
+uv run uvicorn app.main:app --reload    # API on :8000, docs at /docs in development
+
+# 3. Frontend
+cd ../frontend
+cp .env.example .env.local
+npm ci
+npm run dev                      # http://localhost:3000
 ```
 
-More detail: [`docs/PRD.md`](docs/PRD.md) (product), [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) (roadmap), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (schema), [`DECISIONS.md`](DECISIONS.md) (design log).
+Evals (these call the model APIs): `uv run python -m scripts.eval_classifier` and
+`uv run python -m scripts.eval_clustering`. With no backend, set `NEXT_PUBLIC_USE_MOCKS=true` in
+`frontend/.env.local` to render the typed fixtures.
+
+CI runs ruff, mypy (strict), pytest, ESLint, `tsc` and a production build on every push.
+
+## License
+
+[MIT](LICENSE)

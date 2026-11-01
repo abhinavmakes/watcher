@@ -24,8 +24,7 @@ FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "clustering_eval
 def _stats(name: str, values: list[float]) -> None:
     mean = sum(values) / len(values)
     print(
-        f"{name:9} n={len(values):2d}  "
-        f"min={values[0]:.4f}  mean={mean:.4f}  max={values[-1]:.4f}"
+        f"{name:9} n={len(values):2d}  min={values[0]:.4f}  mean={mean:.4f}  max={values[-1]:.4f}"
     )
 
 

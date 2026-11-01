@@ -1,7 +1,6 @@
-// Hand-drawn SVG rather than a diagram library: AGENTS.md rules visualizations are
-// custom SVG, and a 1.5MB renderer for three static figures is a poor trade on a page
-// whose point is that it loads fast. Everything below inherits the site tokens, so the
-// figures stay consistent with the rest of the design.
+// Hand-drawn SVG rather than a diagram library: a 1.5MB renderer for three static figures
+// is a poor trade on a page whose point is that it loads fast. Everything below inherits
+// the site tokens, so the figures stay consistent with the rest of the design.
 
 const BOX = "fill-[var(--card)] stroke-[var(--border)]";
 const LABEL = "fill-[var(--foreground)] text-[11px] font-medium";
@@ -101,7 +100,7 @@ export function ArchitectureDiagram() {
       caption="Three processes that never talk to each other directly. The worker writes, the API reads, and the browser only ever sees the API."
     >
       <Node x={40} y={20} title="Hacker News" sub="top stories" />
-      <Node x={200} y={20} title="22 RSS feeds" sub="news and blogs" />
+      <Node x={200} y={20} title="RSS feeds" sub="news and blogs" />
       <Arrow d="M 106 64 L 106 96" />
       <Arrow d="M 266 64 L 266 96" />
 
@@ -128,10 +127,10 @@ export function PipelineDiagram() {
   const stages = [
     { t: "Fetch", s: "concurrent" },
     { t: "Dedup", s: "by URL" },
-    { t: "Classify", s: "Haiku" },
+    { t: "Classify", s: "gpt-6-luna" },
     { t: "Embed", s: "768d" },
     { t: "Cluster", s: "cosine" },
-    { t: "Synthesize", s: "Sonnet" },
+    { t: "Synthesize", s: "gpt-6-luna" },
     { t: "Rank", s: "decay sum" },
   ];
   return (

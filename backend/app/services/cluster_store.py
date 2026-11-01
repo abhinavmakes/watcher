@@ -117,10 +117,7 @@ async def fetch_resynthesis_inputs(
     for start in range(0, len(cluster_ids), _IN_FILTER_BATCH_SIZE):
         batch = cluster_ids[start : start + _IN_FILTER_BATCH_SIZE]
         clusters_result = await (
-            gateway.table("clusters")
-            .select("id, key_entities, domains")
-            .in_("id", batch)
-            .execute()
+            gateway.table("clusters").select("id, key_entities, domains").in_("id", batch).execute()
         )
         clusters_by_id.update({row["id"]: row for row in clusters_result.data})
 

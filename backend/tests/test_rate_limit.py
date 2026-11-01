@@ -80,5 +80,9 @@ async def test_429_contract_and_cors_land_on_the_limit_response() -> None:
 
 
 def test_real_app_wires_rate_limiting() -> None:
-    assert any(m.cls is SlowAPIMiddleware for m in real_app.user_middleware)
+    # Starlette types Middleware.cls as a factory protocol, so mypy sees no overlap.
+    assert any(
+        m.cls is SlowAPIMiddleware  # type: ignore[comparison-overlap]
+        for m in real_app.user_middleware
+    )
     assert RateLimitExceeded in real_app.exception_handlers

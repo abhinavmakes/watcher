@@ -39,24 +39,3 @@ backend/supabase/.temp/
 dist/
 build/
 *.egg-info/
-
-# Local agent/tooling state
-.agents/
-.codex/
-CLAUDE.md
-AGENTS.md
-checklist.md
-skills
-progress.md
-practice/
-
-# Local-only working docs: audits, self-critique, session logs, coaching protocol.
-# Candid internal assessments — never committed. Public docs stay in docs/.
-local_docs/
-
-# Kept as a safety net in case a local doc is ever recreated under docs/ by habit.
-docs/LEARNING_PROTOCOL.md
-docs/NEXT_SESSION.md
-docs/SESSION_*.md
-docs/EXTENSION_twitter_signal.md
-
