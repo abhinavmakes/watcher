@@ -25,17 +25,17 @@ interface Stage {
 const STAGES: Stage[] = [
   {
     label: "Fetch and dedup",
-    tech: "Hacker News plus 22 RSS feeds",
+    tech: "Hacker News plus RSS feeds",
     Icon: Rss,
-    body: "Hacker News and 22 RSS feeds are fetched concurrently and normalized into one article record, identified by canonical URL. Articles already stored, repeated within the run, or published more than 14 days ago are dropped before any model call.",
+    body: "Hacker News and the configured RSS feeds are fetched concurrently and normalized into one article record, identified by canonical URL. Articles already stored, repeated within the run, or published more than 14 days ago are dropped before any model call.",
     stat: "374 fetched, 120 already known",
     seconds: 29,
   },
   {
     label: "Classify",
-    tech: "Claude Haiku 4.5, structured output",
+    tech: "gpt-6-luna, structured output",
     Icon: Filter,
-    body: "Each new article gets one structured call that returns topics, a relevance score from 0 to 1, a noise flag and the named entities it covers. Articles flagged as noise stop here. Haiku is used because this call runs on every article.",
+    body: "Each new article gets one structured call that returns topics, a relevance score from 0 to 1, a noise flag and the named entities it covers. Articles flagged as noise stop here. A small, cheap model is used because this call runs on every article.",
     stat: "247 classified",
     seconds: 1526,
   },
@@ -55,7 +55,7 @@ const STAGES: Stage[] = [
   },
   {
     label: "Synthesize",
-    tech: "Claude Sonnet 4.6, new and growing stories",
+    tech: "gpt-6-luna, new and growing stories",
     Icon: Sparkles,
     body: "New stories, and existing stories that gained articles, get one call that writes a headline, a summary and a one-line takeaway. The model receives headlines, article text and source names, all of them for a new story and the eight newest for a growing one, and never vectors or clustering state.",
     seconds: 232,

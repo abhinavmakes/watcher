@@ -94,7 +94,7 @@ def _article(
     return ArticleInput(
         source="hn",
         title=title,
-        url="https://example.com/a",  # type: ignore[arg-type]
+        url="https://example.com/a",
         canonical_url="https://example.com/a",
         content=content,
         source_metadata=source_metadata or {},

@@ -36,7 +36,7 @@ _MIN_ARTICLES_PER_PUBLISHER = 6
 _WINDOW_NARROW = 2000
 _WINDOW_WIDE = 8000
 
-# Pre-registered decision rule (local_docs/preregistered-outcomes.md) — do not adjust
+# Pre-registered decision rule (see DECISIONS.md, 2026-09-13) — do not adjust
 # after seeing the result.
 _CONFIRM_BALANCED_WITHIN = -0.03
 _CONFIRM_D = -0.02
@@ -155,8 +155,7 @@ async def main() -> None:
     print(f"D (balanced_within - across):          {d_stat:+.4f}")
     print(f"% within-pairs with delta < 0:         {pct_negative:.1f}%")
     print(
-        f"publishers with mean delta_within < 0: "
-        f"{publishers_negative}/{len(per_publisher_means)}"
+        f"publishers with mean delta_within < 0: {publishers_negative}/{len(per_publisher_means)}"
     )
 
     over_wide_cap = sum(1 for c in corpus if c.content_len > _WINDOW_WIDE)
@@ -186,7 +185,7 @@ async def main() -> None:
     else:
         outcome = "AMBIGUOUS"
     print(f"outcome: {outcome}")
-    print("(entry text: local_docs/preregistered-outcomes.md)")
+    print("(recorded in DECISIONS.md, 2026-09-13)")
 
 
 if __name__ == "__main__":

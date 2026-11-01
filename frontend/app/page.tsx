@@ -33,7 +33,8 @@ export default async function Home() {
           engineering story five times over.
         </p>
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-          Every week it pulls in everything new across AI and software engineering, scores each
+          Every week (for now I run it manually, as and when I need it, to save costs) it
+          pulls in everything new across AI and software engineering, scores each
           article for relevance and drops the noise, then embeds what survives and
           clusters it by meaning rather than by keyword, so a dozen write-ups of one
           launch collapse into a single story. Each story gets a synthesized briefing and

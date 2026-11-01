@@ -22,7 +22,7 @@ class SynthesisArticle(BaseModel):
     title: str
     content: str | None = None
     source: ArticleSource
-   
+
 
 class SynthesisInput(BaseModel):
     articles: list[SynthesisArticle]
