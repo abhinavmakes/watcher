@@ -40,7 +40,7 @@ export function LastRunStrip({ run }: { run: RunSummary }) {
         </span>
       ))}
       {run.status === "failed" && (
-        <span className="text-destructive">{run.error_message ?? "Run failed"}</span>
+        <span className="text-destructive">Run failed</span>
       )}
     </div>
   );

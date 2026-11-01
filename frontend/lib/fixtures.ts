@@ -274,7 +274,6 @@ export const mockRunPage: RunPage = {
       tokens_in: 950_000,
       tokens_out: 42_000,
       stage_timings: { fetch: 4.2, classify: 736.4, embed: 8.1, cluster: 0.4, synthesize: 60.2, momentum: 1.9 },
-      error_message: null,
     },
   ],
 };

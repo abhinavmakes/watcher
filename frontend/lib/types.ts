@@ -46,7 +46,6 @@ export interface RunSummary {
   tokens_in: number;
   tokens_out: number;
   stage_timings: Record<string, number>;
-  error_message?: string | null;
 }
 
 export interface RunPage {
