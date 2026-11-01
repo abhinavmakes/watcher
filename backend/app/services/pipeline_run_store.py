@@ -6,7 +6,7 @@ from app.models.pipeline_run import PipelineRunSummary
 _RUN_SUMMARY_COLUMNS = (
     "id, started_at, completed_at, status, articles_fetched, articles_classified, "
     "clusters_created, clusters_updated, cost_usd, tokens_in, tokens_out, "
-    "stage_timings, error_message"
+    "stage_timings"
 )
 
 

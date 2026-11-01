@@ -24,7 +24,6 @@ def _run_row(run_id: str = "r1") -> dict[str, Any]:
         "tokens_in": 950_000,
         "tokens_out": 40_000,
         "stage_timings": {"fetch": 4.2, "classify": 736.0, "synthesize": 60.0},
-        "error_message": None,
     }
 
 
@@ -53,6 +52,23 @@ async def test_get_runs_returns_typed_summaries(
     assert body["runs"][0]["id"] == "r1"
     assert body["runs"][0]["cost_usd"] == 1.02
     assert body["runs"][0]["stage_timings"]["classify"] == 736.0
+
+
+async def test_get_runs_never_returns_the_error_text(
+    client: httpx.AsyncClient, monkeypatch: MonkeyPatch
+) -> None:
+    failed = _run_row() | {"status": "failed", "error_message": "bad key sk-proj-...abcd"}
+
+    async def fake_fetch_recent_runs(gateway: Any, limit: int) -> list[dict[str, Any]]:
+        return [failed]
+
+    monkeypatch.setattr(runs_api, "fetch_recent_runs", fake_fetch_recent_runs)
+
+    response = await client.get("/api/runs")
+
+    assert response.json()["runs"][0]["status"] == "failed"
+    assert "error_message" not in response.json()["runs"][0]
+    assert "sk-proj" not in response.text
 
 
 async def test_get_runs_degrades_to_empty_page_on_fetch_failure(

@@ -104,7 +104,7 @@ You need [uv](https://docs.astral.sh/uv/), Node 20+, a Supabase project, and an 
 cp .env.example .env             # fill in SUPABASE_URL, SUPABASE_SECRET_KEY, OPENAI_API_KEY
 cd backend
 uv sync
-uv run pytest                    # 133 tests, no network or keys needed
+uv run pytest                    # no network or keys needed
 uv run python -m worker.run      # one ingestion pass (calls the LLM, costs a few cents)
 uv run uvicorn app.main:app --reload    # API on :8000, docs at /docs in development
 

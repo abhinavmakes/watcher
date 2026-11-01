@@ -18,7 +18,7 @@ class RunSummaryCard(BaseModel):
     tokens_in: int
     tokens_out: int
     stage_timings: dict[str, float]
-    error_message: str | None = None
+    # No error_message: raw exceptions can carry request or org ids, so they stay in the DB.
 
 
 class RunPage(BaseModel):
