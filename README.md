@@ -1,7 +1,6 @@
 # Watcher
 
 [![CI](https://github.com/abhinavmakes/watcher/actions/workflows/ci.yml/badge.svg)](https://github.com/abhinavmakes/watcher/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **An AI news feed that does the reading for you.** Watcher pulls in AI and software-engineering
 articles, drops the noise, groups coverage of the same event into one story, and writes a short
@@ -10,11 +9,9 @@ briefing for each, so you read one card instead of the same launch five times.
 **Live: [watcher-news.vercel.app](https://watcher-news.vercel.app)** ·
 [How it works](https://watcher-news.vercel.app/how-it-works)
 
-## How it works
+![The Watcher feed](docs/screenshot.png)
 
-```
-Hacker News + RSS → dedup → classify → embed → cluster → synthesize → momentum → API → site
-```
+## How it works
 
 | Stage | What it does |
 |---|---|
@@ -59,24 +56,6 @@ the current feed mix is the next piece of work. The trade-off is recorded in
 
 ## Architecture
 
-```
- Hacker News + RSS feeds
-          │
- ┌────────▼────────────────────────────┐
- │ Ingestion worker (Python, one-shot,  │
- │ GitHub Actions)                      │
- └────────┬────────────────────────────┘
-          │
- ┌────────▼───────────────────┐
- │ Supabase                   │
- │ Postgres + pgvector, RLS   │
- └────────┬───────────────────┘
-          │
- ┌────────▼───────────────────┐        ┌────────────────────────┐
- │ FastAPI read API (Vercel)  │◄───────│ Next.js site (Vercel)  │
- └────────────────────────────┘        └────────────────────────┘
-```
-
 Three processes that never call each other: the worker writes, the API reads, the browser only
 talks to the API. Details, schema and the security model are in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -99,8 +78,6 @@ The full log, with the alternatives I rejected, is in [`DECISIONS.md`](DECISIONS
 - **PydanticAI, not LangChain.** The pipeline is a linear typed DAG, not a cyclic agent graph.
 - **A public API with no auth, by design.** Read-only, per-IP rate limiting that ignores spoofable
   headers, GET-only CORS, no LLM call on any request path, and row-level security on every table.
-- **Provider is configuration.** `build_model()` routes a `provider:model` setting, so moving
-  from Claude to OpenAI was re-checked against the eval and cut cost about 18x.
 
 ## Roadmap
 
